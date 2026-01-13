@@ -1,10 +1,13 @@
 #pragma once
 
+#include <proto-coro/unused.hpp>
+
 #include <cassert>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
 #include <queue>
+#include <utility>
 
 template <class T>
 class MPMCQueue {
@@ -35,6 +38,7 @@ class MPMCQueue {
             std::lock_guard lk{m_};
             auto old_closed = std::exchange(closed_, true);
             assert(!old_closed);
+            UNUSED(old_closed);
         }
 
         has_items_or_closed_.notify_all();

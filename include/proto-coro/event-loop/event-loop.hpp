@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../routine.hpp"
-#include "../rt.hpp"
+#include <proto-coro/routine.hpp>
+#include <proto-coro/rt.hpp>
+#include <proto-coro/unused.hpp>
 
 #include "mpmc-queue.hpp"
 #include "mpsc-timer-queue.hpp"
@@ -39,6 +40,7 @@ struct EventLoop : IRuntime {
     }
 
     void WhenReady(int fd, InterestKind type, IRoutine* routine) override {
+        UNUSED(fd, type, routine);
         throw std::runtime_error("Not implemented");
     }
 

@@ -1,10 +1,11 @@
 #pragma once
 
-#include "../rt.hpp"
+#include <proto-coro/rt.hpp>
 
 #include <cassert>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <queue>
 
 template <class T>
@@ -44,6 +45,7 @@ struct MPSCTimerQueue {
         std::lock_guard lk{m_};
         auto old_closed = std::exchange(closed_, true);
         assert(!old_closed);
+        UNUSED(old_closed);
 
         has_items_or_closed_.notify_one();
     }
