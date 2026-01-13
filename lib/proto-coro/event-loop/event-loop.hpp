@@ -1,14 +1,8 @@
 #pragma once
 
-#include "mpmc-queue.hpp"
-#include "mpsc-timer-queue.hpp"
-
+#include <proto-coro/fast-pimpl.hpp>
 #include <proto-coro/routine.hpp>
 #include <proto-coro/rt.hpp>
-#include <proto-coro/unused.hpp>
-
-#include <thread>
-#include <vector>
 
 struct EventLoop : IRuntime {
     EventLoop(size_t num_workers);
@@ -23,14 +17,9 @@ struct EventLoop : IRuntime {
 
     void WhenReady(int fd, InterestKind type, IRoutine* routine) override;
 
+    ~EventLoop();
+
   private:
-    void WorkerThread();
-
-    void TimerThread();
-
-    std::vector<std::thread> workers_;
-    MPMCQueue<IRoutine*> tasks_;
-
-    std::thread timer_thread_;
-    MPSCTimerQueue<IRoutine*> timers_;
+    struct Impl;
+    FastPimpl<Impl, 352, 8> impl_;
 };

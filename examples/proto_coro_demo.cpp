@@ -2,8 +2,11 @@
 #include <proto-coro/event-loop/event-loop.hpp>
 #include <proto-coro/pc.hpp>
 
+#include <condition_variable>
 #include <iostream>
+#include <mutex>
 #include <optional>
+#include <thread>
 
 using namespace std::chrono_literals;
 
