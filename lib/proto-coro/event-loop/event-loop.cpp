@@ -1,49 +1,88 @@
 #include "event-loop.hpp"
 
-#include <stdexcept>
+#include "mpmc-queue.hpp"
+#include "mpsc-timer-queue.hpp"
 
-EventLoop::EventLoop(size_t num_workers) : workers_(num_workers) {
+#include <proto-coro/unused.hpp>
+
+#include <stdexcept>
+#include <thread>
+#include <vector>
+
+struct EventLoop::Impl {
+    Impl(size_t num_workers) : workers_(num_workers) {
+    }
+
+    void Start(EventLoop* self) {
+        for (auto& worker : workers_) {
+            worker = std::thread(&Impl::WorkerThread, this, self);
+        }
+        timer_thread_ = std::thread(&Impl::TimerThread, this);
+    }
+
+    void Stop() {
+        tasks_.Close();
+        timers_.Close();
+        for (auto& worker : workers_) {
+            worker.join();
+        }
+        timer_thread_.join();
+    }
+
+    void Submit(IRoutine* routine) {
+        tasks_.Push(routine);
+    }
+
+    void After(TimePoint when, IRoutine* routine) {
+        timers_.Push(when, routine);
+    }
+
+    void WhenReady(int fd, InterestKind type, IRoutine* routine) {
+        UNUSED(fd, type, routine);
+        throw std::runtime_error("Not implemented");
+    }
+
+  private:
+    void WorkerThread(EventLoop* self) {
+        while (auto task = tasks_.Pop()) {
+            (*task)->Step(self);
+        }
+    }
+
+    void TimerThread() {
+        while (auto task = timers_.Pop()) {
+            Submit(*task);
+        }
+    }
+
+    std::vector<std::thread> workers_;
+    MPMCQueue<IRoutine*> tasks_;
+
+    std::thread timer_thread_;
+    MPSCTimerQueue<IRoutine*> timers_;
+};
+
+EventLoop::EventLoop(size_t num_workers) : impl_(num_workers) {
 }
 
 void EventLoop::Start() {
-    for (auto& worker : workers_) {
-        worker = std::thread(&EventLoop::WorkerThread, this);
-    }
-    timer_thread_ = std::thread(&EventLoop::TimerThread, this);
+    impl_->Start(this);
 }
 
 void EventLoop::Stop() {
-    tasks_.Close();
-    timers_.Close();
-    for (auto& worker : workers_) {
-        worker.join();
-    }
-    timer_thread_.join();
+    impl_->Stop();
 }
 
 void EventLoop::Submit(IRoutine* routine) {
-    tasks_.Push(routine);
+    impl_->Submit(routine);
 }
 
 void EventLoop::After(TimePoint when, IRoutine* routine) {
-    std::this_thread::sleep_until(when);
-    Submit(routine);
+    impl_->After(when, routine);
 }
 
-void EventLoop::WhenReady(int /*fd*/, InterestKind /*type*/,
-                          IRoutine* /*routine*/) {
-    throw std::runtime_error("Not implemented");
+void EventLoop::WhenReady(int fd, InterestKind type, IRoutine* routine) {
+    impl_->WhenReady(fd, type, routine);
 }
 
-void EventLoop::WorkerThread() {
-    while (auto task = tasks_.Pop()) {
-        (*task)->Step(this);
-        std::this_thread::yield();
-    }
-}
-
-void EventLoop::TimerThread() {
-    while (auto task = timers_.Pop()) {
-        Submit(*task);
-    }
-}
+EventLoop::~EventLoop() = default;
