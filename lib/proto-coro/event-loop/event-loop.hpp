@@ -1,11 +1,11 @@
 #pragma once
 
+#include "mpmc-queue.hpp"
+#include "mpsc-timer-queue.hpp"
+
 #include <proto-coro/routine.hpp>
 #include <proto-coro/rt.hpp>
 #include <proto-coro/unused.hpp>
-
-#include "mpmc-queue.hpp"
-#include "mpsc-timer-queue.hpp"
 
 #include <thread>
 #include <vector>
