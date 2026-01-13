@@ -1,7 +1,6 @@
-#include "pc.hpp"
-
-#include "concur-util.hpp"
-#include "event-loop/event-loop.hpp"
+#include <proto-coro/concur-util.hpp>
+#include <proto-coro/event-loop/event-loop.hpp>
+#include <proto-coro/pc.hpp>
 
 #include <iostream>
 #include <optional>

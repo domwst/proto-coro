@@ -110,4 +110,4 @@ struct StorageFor {
     }
 };
 
-#define CALLS(...) StorageFor<__VA_ARGS__> pc_callee_storage;
+#define CALLS(...) StorageFor<__VA_ARGS__> pc_callee_storage
