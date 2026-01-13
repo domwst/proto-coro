@@ -7,13 +7,16 @@ option(PROTO_CORO_BUILD_EXAMPLES "Build proto_coro examples" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_library(proto_coro INTERFACE)
+file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS lib/*.cpp)
 
-target_include_directories(proto_coro INTERFACE include)
+add_library(proto_coro STATIC ${LIB_SOURCES})
 
+target_include_directories(proto_coro PUBLIC lib)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)
 
-target_compile_options(proto_coro INTERFACE -Wall -Wextra -Wpedantic)
+target_compile_options(proto_coro PRIVATE -Wall -Wextra -Wpedantic)
 
 if (PROTO_CORO_BUILD_EXAMPLES)
   add_executable(proto_coro_demo examples/proto_coro_demo.cpp)
@@ -29,7 +32,7 @@ if (PROTO_CORO_BUILD_TESTS)
   )
   FetchContent_MakeAvailable(Catch2)
 
-  file(GLOB_RECURSE TEST_SOURCES tests/*.cpp)
+  file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
   add_executable(proto_coro_tests
     ${TEST_SOURCES}
   )
