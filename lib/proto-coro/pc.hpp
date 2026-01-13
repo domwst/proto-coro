@@ -49,10 +49,10 @@ struct Pc {
 
 #define CTX_VAR pc_ctx
 
+ // NOTE: Incorrect
 #define _POLL(label, result_storage, callable_t, result, coro)                 \
     StorageFor<OutputOf<callable_t>> result_storage;                           \
     while (true) {                                                             \
-        _SUSPEND_START(label);                                                 \
         bool finished;                                                         \
         {                                                                      \
             auto res = coro.Step(CTX_VAR);                                     \
@@ -63,6 +63,7 @@ struct Pc {
                 break;                                                         \
             }                                                                  \
         }                                                                      \
+        _SUSPEND_START(label);                                                 \
         _SUSPEND_END(label);                                                   \
     }                                                                          \
     result = std::move(*_RESULT_PTR(result_storage, callable_t));              \
