@@ -1,0 +1,14 @@
+IndentWidth: 4
+SpaceAfterCStyleCast: false
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: false
+SpacesBeforeTrailingComments: 2
+IndentGotoLabels: false
+SeparateDefinitionBlocks: Always
+DerivePointerAlignment: false
+PointerAlignment: Left
+AllowShortLambdasOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+# Currently named as BreakTemplateDeclarations
+AlwaysBreakTemplateDeclarations: true
+InsertBraces: true
