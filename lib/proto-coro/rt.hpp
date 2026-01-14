@@ -27,5 +27,7 @@ struct IRuntime {
 
     virtual void After(TimePoint when, IRoutine* routine) = 0;
 
+    virtual void RegisterFd(RawFd fd) = 0;
+    virtual void DeregisterFd(RawFd fd) = 0;
     virtual void WhenReady(RawFd fd, InterestKind type, IRoutine* routine) = 0;
 };

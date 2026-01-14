@@ -8,21 +8,24 @@
 
 using State = uint16_t;
 
-constexpr State kInitialState = -1;
+constexpr State kInitialState = 0;
 
 struct Pc {
     State pc_state = kInitialState;
 };
+
+// To be used instead of void
+struct Unit {};
 
 #define _CONCAT_IMPL(a, b) a##b
 #define CONCAT(a, b) _CONCAT_IMPL(a, b)
 
 #define UNIQUE_ID(id) CONCAT(id, __COUNTER__)
 
-#define _SUSPEND_START(label) this->pc_state = label
+#define _SUSPEND_START(label) this->pc_state = label + 1
 #define _SUSPEND_END(label)                                                    \
     return std::nullopt;                                                       \
-    case label:
+    case label + 1:
 
 #define _SUSPEND_IMPL(label, block)                                            \
     _SUSPEND_START(label);                                                     \
@@ -49,13 +52,22 @@ struct Pc {
 
 #define CTX_VAR pc_ctx
 
+#define _READY(tmp, res, expr)                                                 \
+    auto tmp = expr;                                                           \
+    if (!tmp.has_value()) {                                                    \
+        return std::nullopt;                                                   \
+    }                                                                          \
+    res = std::move(*tmp);
+
+#define READY(res, expr) _READY(UNIQUE_ID(tmp), res, expr)
+
 #define _POLL(label, result_storage, callable_t, result, coro)                 \
     StorageFor<OutputOf<callable_t>> result_storage;                           \
+    _SUSPEND_START(label);                                                     \
     while (true) {                                                             \
         bool finished;                                                         \
-        _SUSPEND_START(label);                                                 \
         {                                                                      \
-            auto res = coro.Step(CTX_VAR);                                     \
+            auto res = (coro).Step(CTX_VAR);                                   \
             finished = res.has_value();                                        \
             if (finished) {                                                    \
                 new (result_storage.template Get<OutputOf<callable_t>>())      \
@@ -74,7 +86,7 @@ struct Pc {
 #define CALL(result, callable_t, ...)                                          \
     new (this->pc_callee_storage.Get<callable_t>()) callable_t(__VA_ARGS__);   \
     _POLL(__COUNTER__, UNIQUE_ID(result_storage), callable_t, result,          \
-          (*_CALLEE_PTR(callable_t)));                                         \
+          *_CALLEE_PTR(callable_t));                                           \
     _CALLEE_PTR(callable_t)->~callable_t()
 
 #define CALL_DISCARD(callable_t, ...)                                          \

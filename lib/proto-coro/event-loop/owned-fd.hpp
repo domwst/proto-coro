@@ -36,9 +36,13 @@ struct OwnedFd {
 
     void Reset() {
         int fd = Release();
-        if (fd != kInvalidFd) {
+        if (IsValidFd(fd)) {
             ::close(fd);
         }
+    }
+
+    bool IsValid() const {
+        return IsValidFd(fd_);
     }
 
     ~OwnedFd() {
@@ -48,8 +52,12 @@ struct OwnedFd {
   private:
     static constexpr int kInvalidFd = -1;
 
+    static bool IsValidFd(int fd) {
+        return fd != kInvalidFd;
+    }
+
     OwnedFd(int fd) : fd_(fd) {
     }
 
-    int fd_;
+    int fd_ = kInvalidFd;
 };

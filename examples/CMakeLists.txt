@@ -1,0 +1,5 @@
+add_executable(proto_coro_demo proto_coro_demo.cpp)
+target_link_libraries(proto_coro_demo PRIVATE proto_coro)
+
+add_executable(http_server http_server.cpp)
+target_link_libraries(http_server PRIVATE proto_coro)

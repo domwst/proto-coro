@@ -15,11 +15,13 @@ struct EventLoop : IRuntime {
 
     void After(TimePoint when, IRoutine* routine) override;
 
+    void RegisterFd(int fd) override;
+    void DeregisterFd(int fd) override;
     void WhenReady(int fd, InterestKind type, IRoutine* routine) override;
 
     ~EventLoop();
 
   private:
     struct Impl;
-    FastPimpl<Impl, 352, 8> impl_;
+    FastPimpl<Impl, 360, 8> impl_;
 };

@@ -1,10 +1,9 @@
 #include <proto-coro/concur-util.hpp>
 #include <proto-coro/event-loop/event-loop.hpp>
 #include <proto-coro/pc.hpp>
+#include <proto-coro/thread/event.hpp>
 
-#include <condition_variable>
 #include <iostream>
-#include <mutex>
 #include <optional>
 #include <thread>
 
@@ -67,27 +66,6 @@ struct YieldSleep : Pc {
 
         PC_END;
     }
-};
-
-struct ThreadOneshotEvent {
-    void Fire() {
-        std::lock_guard lk{m_};
-        fired_ = true;
-        cv_.notify_all();
-    }
-
-    void Wait() {
-        std::unique_lock lk{m_};
-        cv_.wait(lk, [this] {
-            return fired_;
-        });
-    }
-
-  private:
-    bool fired_ = false;
-
-    std::mutex m_;
-    std::condition_variable cv_;
 };
 
 int main() {

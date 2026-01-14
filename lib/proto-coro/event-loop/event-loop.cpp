@@ -1,11 +1,13 @@
 #include "event-loop.hpp"
 
+#include "epoll.hpp"
+#include "fail.hpp"
 #include "mpmc-queue.hpp"
 #include "mpsc-timer-queue.hpp"
 
 #include <proto-coro/unused.hpp>
 
-#include <stdexcept>
+#include <sys/epoll.h>
 #include <thread>
 #include <vector>
 
@@ -18,15 +20,18 @@ struct EventLoop::Impl {
             worker = std::thread(&Impl::WorkerThread, this, self);
         }
         timer_thread_ = std::thread(&Impl::TimerThread, this);
+        epoll_thread_ = std::thread(&Impl::EpollThread, this);
     }
 
     void Stop() {
         tasks_.Close();
         timers_.Close();
+        epoll_.Close();
         for (auto& worker : workers_) {
             worker.join();
         }
         timer_thread_.join();
+        epoll_thread_.join();
     }
 
     void Submit(IRoutine* routine) {
@@ -37,9 +42,31 @@ struct EventLoop::Impl {
         timers_.Push(when, routine);
     }
 
+    void RegisterFd(int fd) {
+        if (epoll_.Register(fd, 0, nullptr) < 0) {
+            Fail("register fd");
+        }
+    }
+
+    void DeregisterFd(int fd) {
+        if (epoll_.Deregister(fd) < 0) {
+            Fail("deregister fd");
+        }
+    }
+
     void WhenReady(int fd, InterestKind type, IRoutine* routine) {
-        UNUSED(fd, type, routine);
-        throw std::runtime_error("Not implemented");
+        uint32_t epoll_flags = 0;
+        auto utype = static_cast<uint8_t>(type);
+        if (utype & static_cast<uint8_t>(InterestKind::Readable)) {
+            epoll_flags |= EPOLLIN;
+        }
+        if (utype & static_cast<uint8_t>(InterestKind::Writeable)) {
+            epoll_flags |= EPOLLOUT;
+        }
+
+        if (epoll_.Modify(fd, epoll_flags, routine) < 0) {
+            Fail("modify fd");
+        }
     }
 
   private:
@@ -55,11 +82,24 @@ struct EventLoop::Impl {
         }
     }
 
+    void EpollThread() {
+        std::pair<uint32_t, void*> buf[16];
+        auto s = std::span{buf};
+        while (auto tasks = epoll_.Poll(-1, s)) {
+            for (auto& task : s.first(*tasks)) {
+                Submit(static_cast<IRoutine*>(task.second));
+            }
+        }
+    }
+
     std::vector<std::thread> workers_;
     MPMCQueue<IRoutine*> tasks_;
 
     std::thread timer_thread_;
     MPSCTimerQueue<IRoutine*> timers_;
+
+    std::thread epoll_thread_;
+    Epoll epoll_;
 };
 
 EventLoop::EventLoop(size_t num_workers) : impl_(num_workers) {
@@ -79,6 +119,14 @@ void EventLoop::Submit(IRoutine* routine) {
 
 void EventLoop::After(TimePoint when, IRoutine* routine) {
     impl_->After(when, routine);
+}
+
+void EventLoop::RegisterFd(int fd) {
+    impl_->RegisterFd(fd);
+}
+
+void EventLoop::DeregisterFd(int fd) {
+    impl_->DeregisterFd(fd);
 }
 
 void EventLoop::WhenReady(int fd, InterestKind type, IRoutine* routine) {

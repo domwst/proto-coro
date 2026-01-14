@@ -6,9 +6,6 @@
 
 #include <memory>
 
-// To be used instead of void
-struct Unit {};
-
 template <class Inner>
 struct Boxed {
     template <class... Args>
@@ -55,9 +52,6 @@ struct Spawn : IRoutine {
 
 template <class F>
 struct FMap {
-    FMap(F&& f) : f(std::forward<F>(f)) {
-    }
-
     F f;
 };
 
@@ -89,4 +83,44 @@ auto operator|(T&& coro, FMap<F>&& f) {
     };
 
     return FMapCoro{std::forward<T>(coro), std::move(f.f)};
+}
+
+template <class F>
+struct AndThen {
+    F f;
+};
+
+template <class T, class F>
+auto operator|(T&& coro, AndThen<F>&& f) {
+    using U = std::invoke_result_t<F, OutputOf<T>>;
+    using Output = OutputOf<U>;
+
+    struct AndThenCoro : Pc {
+        AndThenCoro(T&& coro, F&& f) : first(std::move(coro)), f(std::move(f)) {
+        }
+
+        PROTO_CORO(Output) {
+            PC_BEGIN;
+
+            {
+                POLL(auto res, first);
+                new (second.template Get<U>()) U(f(std::move(*res)));
+            }
+
+            {
+                POLL(auto res, *reinterpret_cast<U*>(second.Get()));
+                reinterpret_cast<U*>(second.Get())->~U();
+                return res;
+            }
+
+            PC_END;
+        }
+
+      private:
+        T first;
+        StorageFor<U> second;
+        F f;
+    };
+
+    return AndThenCoro{std::forward<T>(coro), std::move(f.f)};
 }

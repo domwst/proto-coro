@@ -21,8 +21,7 @@ target_include_directories(proto_coro PUBLIC lib)
 target_compile_options(proto_coro PRIVATE -Wall -Wextra -Wpedantic)
 
 if (PROTO_CORO_BUILD_EXAMPLES)
-  add_executable(proto_coro_demo examples/proto_coro_demo.cpp)
-  target_link_libraries(proto_coro_demo PRIVATE proto_coro)
+  add_subdirectory(examples)
 endif()
 
 if (PROTO_CORO_BUILD_TESTS)
