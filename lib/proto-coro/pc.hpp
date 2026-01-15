@@ -44,11 +44,8 @@ struct Unit {};
         std::abort();                                                          \
         }
 
-#define _CALLEE_PTR(callable_t)                                                \
-    reinterpret_cast<callable_t*>(this->pc_callee_storage.Get())
-
-#define _RESULT_PTR(storage, callable_t)                                       \
-    reinterpret_cast<OutputOf<callable_t>*>(storage.Get())
+#define _RESULT_PTR(storage, result_t)                                         \
+    reinterpret_cast<result_t*>(storage.Get())
 
 #define CTX_VAR pc_ctx
 
@@ -61,32 +58,37 @@ struct Unit {};
 
 #define READY(res, expr) _READY(UNIQUE_ID(tmp), res, expr)
 
-#define _POLL(label, result_storage, callable_t, result, coro)                 \
-    StorageFor<OutputOf<callable_t>> result_storage;                           \
+#define _POLL(label, result_storage, result_t, result, expr)                   \
+    StorageFor<result_t> result_storage;                                       \
     _SUSPEND_START(label);                                                     \
     while (true) {                                                             \
         bool finished;                                                         \
         {                                                                      \
-            auto res = (coro).Step(CTX_VAR);                                   \
+            auto res = expr;                                                   \
             finished = res.has_value();                                        \
             if (finished) {                                                    \
-                new (result_storage.template Get<OutputOf<callable_t>>())      \
-                    OutputOf<callable_t>(std::move(*res));                     \
+                new (result_storage.template Get<result_t>())                  \
+                    result_t(std::move(*res));                                 \
                 break;                                                         \
             }                                                                  \
         }                                                                      \
         _SUSPEND_END(label);                                                   \
     }                                                                          \
-    result = std::move(*_RESULT_PTR(result_storage, callable_t));              \
-    _RESULT_PTR(result_storage, callable_t)->~OutputOf<callable_t>()
+    result = std::move(*_RESULT_PTR(result_storage, result_t));                \
+    _RESULT_PTR(result_storage, result_t)->~result_t()
 
-#define POLL(result, coro)                                                     \
-    _POLL(__COUNTER__, UNIQUE_ID(result_storage), decltype(coro), result, coro)
+#define POLL(result, expr)                                                     \
+    _POLL(__COUNTER__, UNIQUE_ID(result_storage),                              \
+          InnerOptional<decltype(expr)>, result, expr)
+
+#define POLL_CORO(result, coro) POLL(result, (coro).Step(CTX_VAR))
+
+#define _CALLEE_PTR(callable_t)                                                \
+    reinterpret_cast<callable_t*>(this->pc_callee_storage.Get())
 
 #define CALL(result, callable_t, ...)                                          \
     new (this->pc_callee_storage.Get<callable_t>()) callable_t(__VA_ARGS__);   \
-    _POLL(__COUNTER__, UNIQUE_ID(result_storage), callable_t, result,          \
-          *_CALLEE_PTR(callable_t));                                           \
+    POLL_CORO(result, *_CALLEE_PTR(callable_t));                               \
     _CALLEE_PTR(callable_t)->~callable_t()
 
 #define CALL_DISCARD(callable_t, ...)                                          \
@@ -98,6 +100,9 @@ struct Unit {};
     std::optional<ret> where Step([[maybe_unused]] const Context* CTX_VAR)
 
 #define PROTO_CORO(ret) PROTO_CORO_IMPL(ret, EMPTY)
+
+template <class T>
+using InnerOptional = std::remove_cvref_t<decltype(*std::declval<T>())>;
 
 template <class T>
 using OutputOf = std::remove_cvref_t<decltype(*std::declval<T>().Step(

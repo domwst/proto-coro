@@ -52,7 +52,7 @@ Epoll::Poll(int timeout_ms, std::span<std::pair<uint32_t, void*>> tasks_buf) {
 
     for (auto& event : std::span{events, events + tasks}) {
         if (!event.data.ptr) {
-            assert(tasks == 0);
+            assert(tasks == 1);
             continue;
         }
         tasks_buf.front() = {event.events, event.data.ptr};

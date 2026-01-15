@@ -70,7 +70,7 @@ auto operator|(T&& coro, FMap<F>&& f) {
             PC_BEGIN;
 
             {
-                POLL(auto res, inner);
+                POLL_CORO(auto res, inner);
                 return f(std::move(res));
             }
 
@@ -103,7 +103,7 @@ auto operator|(T&& coro, AndThen<F>&& f) {
             PC_BEGIN;
 
             {
-                POLL(auto res, first);
+                POLL_CORO(auto res, first);
                 new (second.template Get<U>()) U(f(std::move(*res)));
             }
 
