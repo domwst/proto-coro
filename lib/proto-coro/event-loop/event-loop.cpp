@@ -55,12 +55,12 @@ struct EventLoop::Impl {
     }
 
     void WhenReady(int fd, InterestKind type, IRoutine* routine) {
-        uint32_t epoll_flags = 0;
+        uint32_t epoll_flags = EPOLLONESHOT;
         auto utype = static_cast<uint8_t>(type);
         if (utype & static_cast<uint8_t>(InterestKind::Readable)) {
             epoll_flags |= EPOLLIN;
         }
-        if (utype & static_cast<uint8_t>(InterestKind::Writeable)) {
+        if (utype & static_cast<uint8_t>(InterestKind::Writable)) {
             epoll_flags |= EPOLLOUT;
         }
 

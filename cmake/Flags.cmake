@@ -1,3 +1,5 @@
+add_compile_options(-Wall -Wextra -Werror -Wpedantic -g)
+
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Asan")
     add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all)
     add_link_options(-fsanitize=address,undefined)

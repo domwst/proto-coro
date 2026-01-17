@@ -10,7 +10,7 @@ using RawFd = int;
 enum class InterestKind : uint8_t {
     None = 0b00,
     Readable = 0b01,
-    Writeable = 0b10,
+    Writable = 0b10,
 };
 
 inline InterestKind operator|(InterestKind lhs, InterestKind rhs) {

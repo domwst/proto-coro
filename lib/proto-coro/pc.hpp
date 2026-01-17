@@ -81,21 +81,26 @@ struct Unit {};
     _POLL(__COUNTER__, UNIQUE_ID(result_storage),                              \
           InnerOptional<decltype(expr)>, result, expr)
 
+#define POLL_DISCARD(expr)                                                     \
+    {                                                                          \
+        POLL([[maybe_unused]] auto UNIQUE_ID(discard), expr);                  \
+    }
+
 #define POLL_CORO(result, coro) POLL(result, (coro).Step(CTX_VAR))
 
 #define _CALLEE_PTR(callable_t)                                                \
     reinterpret_cast<callable_t*>(this->pc_callee_storage.Get())
 
-#define _CALL(callable_t, result, expr)                                        \
-    new (this->pc_callee_storage.Get<callable_t>()) expr;                      \
+#define _CALL(callable_t, result, ...)                                         \
+    new (this->pc_callee_storage.Get<callable_t>()) __VA_ARGS__;               \
     POLL_CORO(result, *_CALLEE_PTR(callable_t));                               \
     _CALLEE_PTR(callable_t)->~callable_t()
 
-#define CALL(result, expr) _CALL(decltype(expr), result, expr)
+#define CALL(result, ...) _CALL(decltype(__VA_ARGS__), result, __VA_ARGS__)
 
-#define CALL_DISCARD(expr)                                                     \
+#define CALL_DISCARD(...)                                                      \
     {                                                                          \
-        CALL(auto UNIQUE_ID(discard), expr);                                   \
+        CALL([[maybe_unused]] auto UNIQUE_ID(discard), __VA_ARGS__);           \
     }
 
 #define EMPTY

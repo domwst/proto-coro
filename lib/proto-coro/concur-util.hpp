@@ -35,27 +35,14 @@ struct Spawn : IRoutine {
     T inner;
 };
 
-#define _SLEEP_UNTIL_IMPL(label, when)                                         \
-    _SUSPEND_START(label);                                                     \
-    CTX_VAR->rt->After(when, CTX_VAR->self);                                   \
-    _SUSPEND_END(label)
-
-#define SLEEP_UNTIL(when) _SLEEP_UNTIL_IMPL(__COUNTER__, when)
+#define SLEEP_UNTIL(when)                                                      \
+    SUSPEND_AND({ CTX_VAR->rt->After(when, CTX_VAR->self); })
 #define SLEEP_FOR(duration) SLEEP_UNTIL(Clock::now() + duration)
 
-#define _YIELD_IMPL(label)                                                     \
-    _SUSPEND_START(label);                                                     \
-    CTX_VAR->rt->Submit(CTX_VAR->self);                                        \
-    _SUSPEND_END(label)
+#define WAIT_READY(fd, interest)                                               \
+    SUSPEND_AND({ CTX_VAR->rt->WhenReady(fd, interest, CTX_VAR->self); })
 
-#define _WAIT_READY_IMPL(label, fd, interest)                                  \
-    _SUSPEND_START(label);                                                     \
-    CTX_VAR->rt->WhenReady(fd, interest, CTX_VAR->self);                       \
-    _SUSPEND_END(label)
-
-#define WAIT_READY(fd, interest) _WAIT_READY_IMPL(__COUNTER__, fd, interest)
-
-#define YIELD _YIELD_IMPL(__COUNTER__)
+#define YIELD SUSPEND_AND({ CTX_VAR->rt->Submit(CTX_VAR->self); })
 
 template <class F>
 struct FMap {
@@ -133,7 +120,7 @@ auto operator|(T&& coro, AndThen<F>&& f) {
 }
 
 template <class T>
-struct DeletingCoro : IRoutine {
+struct DeletingCoro final : IRoutine {
     DeletingCoro(T&& routine) : inner_(std::forward<T>(routine)) {
     }
 
