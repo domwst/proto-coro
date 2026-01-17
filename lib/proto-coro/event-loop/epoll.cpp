@@ -2,6 +2,7 @@
 #include "fail.hpp"
 
 #include <cassert>
+#include <cstring>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
@@ -35,6 +36,14 @@ int Epoll::Deregister(int fd) {
     return epoll_ctl(efd_.AsRawFd(), EPOLL_CTL_DEL, fd, nullptr);
 }
 
+static void* ReadDataPtr(const epoll_event& event) {
+    void* res;
+    memcpy(&res,
+           reinterpret_cast<const char*>(&event) + offsetof(epoll_event, data),
+           sizeof(res));
+    return res;
+}
+
 std::optional<size_t>
 Epoll::Poll(int timeout_ms, std::span<std::pair<uint32_t, void*>> tasks_buf) {
     if (is_closed_.load(std::memory_order_relaxed)) {
@@ -51,11 +60,13 @@ Epoll::Poll(int timeout_ms, std::span<std::pair<uint32_t, void*>> tasks_buf) {
     }
 
     for (auto& event : std::span{events, events + tasks}) {
-        if (!event.data.ptr) {
+        auto ptr = ReadDataPtr(event);
+        if (!ptr) {
             assert(tasks == 1);
+            --tasks;
             continue;
         }
-        tasks_buf.front() = {event.events, event.data.ptr};
+        tasks_buf.front() = {event.events, ptr};
         tasks_buf = tasks_buf.subspan(1);
     }
     return tasks;

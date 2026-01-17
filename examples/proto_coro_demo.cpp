@@ -38,7 +38,7 @@ struct CoroX5 : Pc {
             std::cout << "Calling for the " << i << "th time" << std::endl;
 
             {
-                CALL(auto res, Coro);
+                CALL(auto res, Coro{});
                 std::cout << "Got " << res << std::endl;
                 sum += res;
             }

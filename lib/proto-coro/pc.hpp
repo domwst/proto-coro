@@ -86,13 +86,17 @@ struct Unit {};
 #define _CALLEE_PTR(callable_t)                                                \
     reinterpret_cast<callable_t*>(this->pc_callee_storage.Get())
 
-#define CALL(result, callable_t, ...)                                          \
-    new (this->pc_callee_storage.Get<callable_t>()) callable_t(__VA_ARGS__);   \
+#define _CALL(callable_t, result, expr)                                        \
+    new (this->pc_callee_storage.Get<callable_t>()) expr;                      \
     POLL_CORO(result, *_CALLEE_PTR(callable_t));                               \
     _CALLEE_PTR(callable_t)->~callable_t()
 
-#define CALL_DISCARD(callable_t, ...)                                          \
-    CALL(auto UNIQUE_ID(discard), callable_t, __VA_ARGS__)
+#define CALL(result, expr) _CALL(decltype(expr), result, expr)
+
+#define CALL_DISCARD(expr)                                                     \
+    {                                                                          \
+        CALL(auto UNIQUE_ID(discard), expr);                                   \
+    }
 
 #define EMPTY
 

@@ -48,6 +48,13 @@ struct Spawn : IRoutine {
     CTX_VAR->rt->Submit(CTX_VAR->self);                                        \
     _SUSPEND_END(label)
 
+#define _WAIT_READY_IMPL(label, fd, interest)                                  \
+    _SUSPEND_START(label);                                                     \
+    CTX_VAR->rt->WhenReady(fd, interest, CTX_VAR->self);                       \
+    _SUSPEND_END(label)
+
+#define WAIT_READY(fd, interest) _WAIT_READY_IMPL(__COUNTER__, fd, interest)
+
 #define YIELD _YIELD_IMPL(__COUNTER__)
 
 template <class F>
@@ -124,3 +131,23 @@ auto operator|(T&& coro, AndThen<F>&& f) {
 
     return AndThenCoro{std::forward<T>(coro), std::move(f.f)};
 }
+
+template <class T>
+struct DeletingCoro : IRoutine {
+    DeletingCoro(T&& routine) : inner_(std::forward<T>(routine)) {
+    }
+
+    T& GetInner() {
+        return inner_;
+    }
+
+    void Step(IRuntime* rt) override {
+        Context ctx{this, rt};
+        if (inner_.Step(&ctx).has_value()) {
+            delete this;
+        }
+    }
+
+  private:
+    T inner_;
+};
