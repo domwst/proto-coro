@@ -8,15 +8,15 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 
-#include <iostream>
 #include <cassert>
+#include <iostream>
 
 struct BufReader {
     BufReader(RegisteredFd& fd) : fd_(fd) {
     }
 
     std::optional<int> Peek(const Context* ctx) {
-        READY(auto _, TryRefill(ctx));
+        READY_DISCARD(TryRefill(ctx));
         if (filled_ == 0) {
             return EOF;
         }
@@ -25,7 +25,7 @@ struct BufReader {
     }
 
     std::optional<size_t> ReadTo(std::span<char> buf, const Context* ctx) {
-        READY(auto _, TryRefill(ctx));
+        READY_DISCARD(TryRefill(ctx));
 
         auto n = std::min(buf.size(), filled_ - read_to_);
         std::copy_n(buf_ + read_to_, n, buf.begin());
@@ -73,7 +73,7 @@ struct BufWriter {
     }
 
     std::optional<size_t> Write(std::span<const char> buf, const Context* ctx) {
-        READY(auto _, MaybeFlush(ctx));
+        READY_DISCARD(MaybeFlush(ctx));
         auto n = std::min(buf.size(), sizeof(buf_) - filled_);
         std::copy_n(buf.begin(), n, buf_ + filled_);
         filled_ += n;
@@ -117,7 +117,8 @@ struct BufWriter {
 };
 
 struct WriteAll : Pc {
-    WriteAll(BufWriter& writer, std::span<const char> buf) : writer_(writer), buf_(buf) {
+    WriteAll(BufWriter& writer, std::span<const char> buf)
+        : writer_(writer), buf_(buf) {
     }
 
     PROTO_CORO(size_t) {
@@ -151,7 +152,7 @@ struct Response {
 
 struct WriteResponse : Pc {
     WriteResponse(BufWriter& writer, Response& response)
-        : writer_(writer), response_(response){
+        : writer_(writer), response_(response) {
         headers_it_ = response.headers.begin();
     }
 
@@ -238,7 +239,6 @@ struct RequestServe : Pc {
             response_.headers.emplace_back("Content-Type", "text/html");
             response_.headers.emplace_back("Connection", "close");
 
-
             body_buf_ = R"(<!doctype html>
 <html lang="en">
   <head>
@@ -246,7 +246,8 @@ struct RequestServe : Pc {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Title</title>
   </head>
-  <body><h3>Your header</h3><pre>)" + header + R"(</pre>
+  <body><h3>Your header</h3><pre>)" +
+                        header + R"(</pre>
   </body>
 </html>
 )";
@@ -255,7 +256,7 @@ struct RequestServe : Pc {
 
         CALL_DISCARD(WriteResponse{*writer_, response_});
         {
-            POLL(auto _, writer_->Flush(CTX_VAR));
+            POLL_DISCARD(writer_->Flush(CTX_VAR));
         }
 
         return Unit{};
@@ -355,6 +356,7 @@ struct Server : Pc {
         PC_BEGIN;
 
         CALL_DISCARD(Listener{std::move(sfd_.value())});
+        return Unit{};
 
         PC_END;
     }

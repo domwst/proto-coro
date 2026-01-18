@@ -57,6 +57,7 @@ struct Unit {};
     res = std::move(*tmp);
 
 #define READY(res, expr) _READY(UNIQUE_ID(tmp), res, expr)
+#define READY_DISCARD(expr) READY([[maybe_unused]] auto UNIQUE_ID(discard), expr)
 
 #define _POLL(label, result_storage, result_t, result, expr)                   \
     StorageFor<result_t> result_storage;                                       \
