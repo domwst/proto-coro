@@ -4,9 +4,18 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <memory>  // IWYU pragma: keep  // std::destroy_at is used in macro expansion
 #include <type_traits>
+#include <utility>
 
 using State = uint16_t;
+
+template <class T>
+using InnerOptional = std::remove_cvref_t<decltype(*std::declval<T>())>;
+
+template <class T>
+using OutputOf = std::remove_cvref_t<decltype(*std::declval<T>().Step(
+    std::declval<const Context*>()))>;
 
 constexpr State kInitialState = 0;
 
@@ -57,7 +66,8 @@ struct Unit {};
     res = std::move(*tmp);
 
 #define READY(res, expr) _READY(UNIQUE_ID(tmp), res, expr)
-#define READY_DISCARD(expr) READY([[maybe_unused]] auto UNIQUE_ID(discard), expr)
+#define READY_DISCARD(expr)                                                    \
+    READY([[maybe_unused]] auto UNIQUE_ID(discard), expr)
 
 #define _POLL(label, result_storage, result_t, result, expr)                   \
     StorageFor<result_t> result_storage;                                       \
@@ -76,7 +86,7 @@ struct Unit {};
         _SUSPEND_END(label);                                                   \
     }                                                                          \
     result = std::move(*_RESULT_PTR(result_storage, result_t));                \
-    _RESULT_PTR(result_storage, result_t)->~result_t()
+    std::destroy_at(_RESULT_PTR(result_storage, result_t))
 
 #define POLL(result, expr)                                                     \
     _POLL(__COUNTER__, UNIQUE_ID(result_storage),                              \
@@ -95,7 +105,7 @@ struct Unit {};
 #define _CALL(callable_t, result, ...)                                         \
     new (this->pc_callee_storage.Get<callable_t>()) __VA_ARGS__;               \
     POLL_CORO(result, *_CALLEE_PTR(callable_t));                               \
-    _CALLEE_PTR(callable_t)->~callable_t()
+    std::destroy_at(_CALLEE_PTR(callable_t))
 
 #define CALL(result, ...) _CALL(decltype(__VA_ARGS__), result, __VA_ARGS__)
 
@@ -110,13 +120,6 @@ struct Unit {};
     std::optional<ret> where Step([[maybe_unused]] const Context* CTX_VAR)
 
 #define PROTO_CORO(ret) PROTO_CORO_IMPL(ret, EMPTY)
-
-template <class T>
-using InnerOptional = std::remove_cvref_t<decltype(*std::declval<T>())>;
-
-template <class T>
-using OutputOf = std::remove_cvref_t<decltype(*std::declval<T>().Step(
-    std::declval<const Context*>()))>;
 
 // A-la aligned union
 template <class... Ts>
