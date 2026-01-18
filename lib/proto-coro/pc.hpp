@@ -140,4 +140,11 @@ struct StorageFor {
     }
 };
 
-#define CALLS(...) StorageFor<__VA_ARGS__> pc_callee_storage
+template <class... Ts>
+struct CalleeStorageFor : StorageFor<Ts...> {
+    CalleeStorageFor() {
+        std::ranges::fill(this->data_, 0);
+    }
+};
+
+#define CALLS(...) CalleeStorageFor<__VA_ARGS__> pc_callee_storage

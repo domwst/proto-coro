@@ -270,7 +270,7 @@ struct RequestServe : Pc {
     RegisteredFd fd_;
     std::optional<BufReader> reader_;
     std::optional<BufWriter> writer_;
-    Response response_;
+    Response response_{};
     std::string body_buf_;
 };
 
