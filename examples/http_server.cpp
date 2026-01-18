@@ -246,7 +246,7 @@ struct RequestServe : Pc {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Title</title>
   </head>
-  <body><h3>Data you've sent:</h3><pre>)" + header + R"(</pre>
+  <body><h3>Your header</h3><pre>)" + header + R"(</pre>
   </body>
 </html>
 )";
