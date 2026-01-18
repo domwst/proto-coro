@@ -8,22 +8,22 @@
 
 #if __has_feature(thread_sanitizer)
 extern "C" {
-    void __tsan_acquire(void* ptr);
-    void __tsan_release(void* ptr);
+void __tsan_acquire(void* ptr);
+void __tsan_release(void* ptr);
 }
 
-void Acquire(void* ptr) {
+static void Acquire(void* ptr) {
     __tsan_acquire(ptr);
 }
 
-void Release(void* ptr) {
+static void Release(void* ptr) {
     __tsan_release(ptr);
 }
 #else
-void Acquire(void*) {
+static void Acquire(void*) {
 }
 
-void Release(void*) {
+static void Release(void*) {
 }
 #endif
 
