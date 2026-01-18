@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD 23)
 
 include(cmake/Flags.cmake)
 
+add_subdirectory(aux)
+
 file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS lib/*.cpp)
 
 add_library(proto_coro STATIC ${LIB_SOURCES})

@@ -10,7 +10,7 @@ file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS *.cpp)
 add_executable(proto_coro_tests
   ${TEST_SOURCES}
 )
-target_link_libraries(proto_coro_tests PRIVATE proto_coro Catch2::Catch2WithMain)
+target_link_libraries(proto_coro_tests PRIVATE falter proto_coro Catch2::Catch2WithMain)
 
 include(CTest)
 include(Catch)

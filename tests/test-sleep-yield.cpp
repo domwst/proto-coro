@@ -1,13 +1,12 @@
-#include "proto-coro/event-loop/event-loop.hpp"
-#include <catch2/catch_test_macros.hpp>
-
 #include <proto-coro/concur-util.hpp>
+#include <proto-coro/event-loop/event-loop.hpp>
 #include <proto-coro/pc.hpp>
 #include <proto-coro/rt.hpp>
 #include <proto-coro/thread/event.hpp>
 
-#include <chrono>
-#include <thread>
+#include <falter/interface.hpp>
+
+#include <catch2/catch_test_macros.hpp>
 
 using namespace std::chrono_literals;
 
@@ -17,31 +16,31 @@ struct Coro : Pc {
     Coro() {
     }
 
-    PROTO_CORO(std::vector<std::thread::id>) {
+    PROTO_CORO(int) {
         PC_BEGIN;
 
-        threads.push_back(std::this_thread::get_id());
+        ++counter;
         YIELD;
-        threads.push_back(std::this_thread::get_id());
+        ++counter;
         YIELD;
-        threads.push_back(std::this_thread::get_id());
+        ++counter;
 
         SLEEP_FOR(100ms);
-        threads.push_back(std::this_thread::get_id());
-        return std::move(threads);
+        ++counter;
+        return counter;
 
         PC_END;
     }
 
-    std::vector<std::thread::id> threads;
+    int counter = 0;
 };
 
 TEST_CASE("Yield ans sleep") {
     ThreadOneshotEvent done;
-    std::vector<std::thread::id> threads;
+    int counter;
 
-    auto c = Spawn{Coro{} | FMap{[&done, &threads](auto&& res) {
-                       threads = std::move(res);
+    auto c = Spawn{Coro{} | FMap{[&done, &counter](auto&& res) {
+                       counter = res;
                        done.Fire();
                        return Unit{};
                    }}};
@@ -54,11 +53,8 @@ TEST_CASE("Yield ans sleep") {
 
     loop.Stop();
 
-    REQUIRE(threads.size() == 4);
-    std::ranges::sort(threads);
-    threads.resize(std::unique(threads.begin(), threads.end()) -
-                   threads.begin());
-    WARN("Threads observed: " << threads.size());
+    REQUIRE(counter == 4);
+    WARN("Falter stats: " << GlobalStats());
 }
 
 }  // namespace
