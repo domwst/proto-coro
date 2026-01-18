@@ -75,6 +75,13 @@ FALTER_MOCK(int, pthread_mutex_lock, pthread_mutex_t*, mutex) {
     return real_pthread_mutex_lock(mutex);
 }
 
+FALTER_MOCK(int, pthread_mutex_timedlock, pthread_mutex_t*, mutex,
+            const struct timespec*, abstime) {
+    MutexFault();
+    FetchAdd(GlobalStats().locks, 1);
+    return real_pthread_mutex_timedlock(mutex, abstime);
+}
+
 FALTER_MOCK(int, pthread_mutex_unlock, pthread_mutex_t*, mutex) {
     MutexFault();
     return real_pthread_mutex_unlock(mutex);
@@ -94,6 +101,13 @@ FALTER_MOCK(int, pthread_cond_wait, pthread_cond_t*, cond, pthread_mutex_t*,
             mutex) {
     FetchAdd(GlobalStats().cond_waits, 1);
     if (CondFault()) {
+        if (int ret =
+                impl_for_pthread_mutex_unlock::real_pthread_mutex_unlock(mutex);
+            ret != 0) {
+            return ret;
+        }
+        std::this_thread::yield();
+        impl_for_pthread_mutex_lock::real_pthread_mutex_lock(mutex);
         return 0;
     }
     return real_pthread_cond_wait(cond, mutex);
