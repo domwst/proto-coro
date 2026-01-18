@@ -18,11 +18,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build
+          sudo apt-get install -y ninja-build g++
 
       - name: Configure
         run: |
-          cmake -S . -B build/${{ matrix.build_type }} -G Ninja \
+          CXX=$(which g++) CC=$(which gcc) cmake -S . \
+            -B build/${{ matrix.build_type }} -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Build
