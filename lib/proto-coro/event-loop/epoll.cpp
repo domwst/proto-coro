@@ -6,7 +6,7 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
-#if __has_feature(thread_sanitizer)
+#ifdef TSAN
 extern "C" {
 void __tsan_acquire(void* ptr);
 void __tsan_release(void* ptr);
@@ -59,11 +59,15 @@ int Epoll::Deregister(int fd) {
     return epoll_ctl(efd_.AsRawFd(), EPOLL_CTL_DEL, fd, nullptr);
 }
 
-static void* ReadDataPtr(const epoll_event& event) {
-    void* res;
-    memcpy(&res,
+static std::pair<uint32_t, void*> ReadEpollEvent(const epoll_event& event) {
+    std::pair<uint32_t, void*> res;
+    memcpy(&res.first,
+           reinterpret_cast<const char*>(&event) +
+               offsetof(epoll_event, events),
+           sizeof(res.first));
+    memcpy(&res.second,
            reinterpret_cast<const char*>(&event) + offsetof(epoll_event, data),
-           sizeof(res));
+           sizeof(res.second));
     return res;
 }
 
@@ -83,14 +87,14 @@ Epoll::Poll(int timeout_ms, std::span<std::pair<uint32_t, void*>> tasks_buf) {
     }
 
     for (auto& event : std::span{events, events + tasks}) {
-        auto ptr = ReadDataPtr(event);
+        auto [events, ptr] = ReadEpollEvent(event);
         if (!ptr) {
             assert(tasks == 1);
             --tasks;
             continue;
         }
         Acquire(ptr);
-        tasks_buf.front() = {event.events, ptr};
+        tasks_buf.front() = {events, ptr};
         tasks_buf = tasks_buf.subspan(1);
     }
     return tasks;
