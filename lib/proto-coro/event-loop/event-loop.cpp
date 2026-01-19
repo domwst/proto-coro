@@ -11,6 +11,27 @@
 #include <thread>
 #include <vector>
 
+#ifdef TSAN
+extern "C" {
+void __tsan_acquire(void* ptr);
+void __tsan_release(void* ptr);
+}
+
+static void Acquire(void* ptr) {
+    __tsan_acquire(ptr);
+}
+
+static void Release(void* ptr) {
+    __tsan_release(ptr);
+}
+#else
+static void Acquire(void*) {
+}
+
+static void Release(void*) {
+}
+#endif
+
 struct EventLoop::Impl {
     Impl(size_t num_workers) : workers_(num_workers) {
     }
@@ -55,6 +76,7 @@ struct EventLoop::Impl {
     }
 
     void WhenReady(int fd, InterestKind type, IRoutine* routine) {
+        Release(routine);
         uint32_t epoll_flags = EPOLLONESHOT;
         auto utype = static_cast<uint8_t>(type);
         if (utype & static_cast<uint8_t>(InterestKind::Readable)) {
@@ -87,6 +109,7 @@ struct EventLoop::Impl {
         auto s = std::span{buf};
         while (auto tasks = epoll_.Poll(-1, s)) {
             for (auto& task : s.first(*tasks)) {
+                Acquire(task.second);
                 Submit(static_cast<IRoutine*>(task.second));
             }
         }

@@ -6,27 +6,6 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
-#ifdef TSAN
-extern "C" {
-void __tsan_acquire(void* ptr);
-void __tsan_release(void* ptr);
-}
-
-static void Acquire(void* ptr) {
-    __tsan_acquire(ptr);
-}
-
-static void Release(void* ptr) {
-    __tsan_release(ptr);
-}
-#else
-static void Acquire(void*) {
-}
-
-static void Release(void*) {
-}
-#endif
-
 Epoll::Epoll() {
     int efd = epoll_create1(EPOLL_CLOEXEC);
     if (efd < 0) {
@@ -46,12 +25,10 @@ Epoll::Epoll() {
 }
 
 int Epoll::Register(int fd, uint32_t flags, void* cookie) {
-    Release(cookie);
     return Change(fd, flags, cookie, EPOLL_CTL_ADD);
 }
 
 int Epoll::Modify(int fd, uint32_t flags, void* cookie) {
-    Release(cookie);
     return Change(fd, flags, cookie, EPOLL_CTL_MOD);
 }
 
@@ -93,7 +70,6 @@ Epoll::Poll(int timeout_ms, std::span<std::pair<uint32_t, void*>> tasks_buf) {
             --tasks;
             continue;
         }
-        Acquire(ptr);
         tasks_buf.front() = {events, ptr};
         tasks_buf = tasks_buf.subspan(1);
     }
