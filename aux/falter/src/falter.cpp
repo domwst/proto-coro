@@ -56,8 +56,12 @@ static uint64_t FetchAdd(uint64_t& where, uint64_t val) {
                                                                                \
     ret str::run(ARGS_MAP(ARG_DECL, __VA_ARGS__))
 
+#define _IMPL_STRUCT_NAME(name) impl_for_##name
+
 #define FALTER_MOCK(ret, name, ...)                                            \
-    _FALTER_MOCK(impl_for_##name, ret, name, __VA_ARGS__)
+    _FALTER_MOCK(_IMPL_STRUCT_NAME(name), ret, name, __VA_ARGS__)
+
+#define REAL(name) _IMPL_STRUCT_NAME(name)::real_##name
 
 static thread_local std::mt19937 rng{424243};
 static thread_local int mutex_fault = 2;
@@ -101,13 +105,11 @@ FALTER_MOCK(int, pthread_cond_wait, pthread_cond_t*, cond, pthread_mutex_t*,
             mutex) {
     FetchAdd(GlobalStats().cond_waits, 1);
     if (CondFault()) {
-        if (int ret =
-                impl_for_pthread_mutex_unlock::real_pthread_mutex_unlock(mutex);
-            ret != 0) {
+        if (int ret = REAL(pthread_mutex_unlock)(mutex); ret != 0) {
             return ret;
         }
         std::this_thread::yield();
-        impl_for_pthread_mutex_lock::real_pthread_mutex_lock(mutex);
+        REAL(pthread_mutex_lock)(mutex);
         return 0;
     }
     return real_pthread_cond_wait(cond, mutex);
