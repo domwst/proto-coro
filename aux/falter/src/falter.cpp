@@ -64,12 +64,31 @@ static uint64_t FetchAdd(uint64_t& where, uint64_t val) {
 #define REAL(name) _IMPL_STRUCT_NAME(name)::real_##name
 
 static thread_local std::mt19937 rng{424243};
-static thread_local int mutex_fault = 2;
+
+template <size_t N>
+struct CountdownFaultStrategy {
+    CountdownFaultStrategy(size_t n) : n_(n) {
+    }
+
+    bool Fault() {
+        // clang-format off
+        if (n_ --> 0) {
+            return false;
+        }
+        // clang-format on
+        n_ = rng() % N;
+        return true;
+    }
+
+  private:
+    size_t n_;
+};
+
+static thread_local CountdownFaultStrategy<9> mutex_fault{2};
 
 static void MutexFault() {
-    if (mutex_fault-- == 0) {
+    if (mutex_fault.Fault()) {
         std::this_thread::yield();
-        mutex_fault = rng() % 9;
     }
 }
 
@@ -91,20 +110,12 @@ FALTER_MOCK(int, pthread_mutex_unlock, pthread_mutex_t*, mutex) {
     return real_pthread_mutex_unlock(mutex);
 }
 
-static thread_local int cond_spurious = 3;
-
-bool CondFault() {
-    if (cond_spurious-- == 0) {
-        cond_spurious = rng() % 5;
-        return true;
-    }
-    return false;
-}
+static thread_local CountdownFaultStrategy<5> cond_spurious{3};
 
 FALTER_MOCK(int, pthread_cond_wait, pthread_cond_t*, cond, pthread_mutex_t*,
             mutex) {
     FetchAdd(GlobalStats().cond_waits, 1);
-    if (CondFault()) {
+    if (cond_spurious.Fault()) {
         if (int ret = REAL(pthread_mutex_unlock)(mutex); ret != 0) {
             return ret;
         }
