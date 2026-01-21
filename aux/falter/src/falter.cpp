@@ -67,7 +67,7 @@ static thread_local std::mt19937 rng{424243};
 static thread_local int mutex_fault = 2;
 
 static void MutexFault() {
-    if (--mutex_fault == 0) {
+    if (mutex_fault-- == 0) {
         std::this_thread::yield();
         mutex_fault = rng() % 9;
     }
@@ -94,7 +94,7 @@ FALTER_MOCK(int, pthread_mutex_unlock, pthread_mutex_t*, mutex) {
 static thread_local int cond_spurious = 3;
 
 bool CondFault() {
-    if (--cond_spurious == 0) {
+    if (cond_spurious-- == 0) {
         cond_spurious = rng() % 5;
         return true;
     }
