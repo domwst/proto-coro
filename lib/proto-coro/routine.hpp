@@ -1,7 +1,6 @@
 #pragma once
 
-#include "ctx.hpp"
-
+template <class Runtime>
 struct IRoutine {
-    virtual void Step(IRuntime* ctx) = 0;
+    virtual void Step(Runtime* rt) = 0;
 };

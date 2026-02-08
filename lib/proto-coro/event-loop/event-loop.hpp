@@ -1,23 +1,27 @@
 #pragma once
 
+#include "fd-registerer.hpp"
+
 #include <proto-coro/fast-pimpl.hpp>
 #include <proto-coro/routine.hpp>
 #include <proto-coro/rt.hpp>
 
-struct EventLoop : IRuntime {
+struct EventLoop : IFdRegisterer {
+    using Task = IRoutine<EventLoop>;
+
     EventLoop(size_t num_workers);
 
     void Start();
 
     void Stop();
 
-    void Submit(IRoutine* routine) override;
+    void Submit(Task* routine);
 
-    void After(TimePoint when, IRoutine* routine) override;
+    void After(TimePoint when, Task* routine);
 
-    void RegisterFd(int fd) override;
-    void DeregisterFd(int fd) override;
-    void WhenReady(int fd, InterestKind type, IRoutine* routine) override;
+    void Register(int fd) override;
+    void Deregister(int fd) override;
+    void WhenReady(int fd, InterestKind type, Task* routine);
 
     ~EventLoop();
 

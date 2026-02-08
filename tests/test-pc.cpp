@@ -26,14 +26,18 @@ struct CounterCoro : Pc {
 }  // namespace
 
 TEST_CASE("Pc coroutine resumes and returns on completion") {
-    CounterCoro coro;
+    struct DummyRuntime {
+    } rt;
 
-    REQUIRE(coro.Step(nullptr) == std::nullopt);
+    CounterCoro coro;
+    Context ctx{&coro, &rt};
+
+    REQUIRE(coro.Step(&ctx) == std::nullopt);
     REQUIRE(coro.i == 1);
 
-    REQUIRE(coro.Step(nullptr) == std::nullopt);
+    REQUIRE(coro.Step(&ctx) == std::nullopt);
     REQUIRE(coro.i == 2);
 
-    REQUIRE(coro.Step(nullptr).value() == 3);
+    REQUIRE(coro.Step(&ctx).value() == 3);
     REQUIRE(coro.i == 3);
 }

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "ctx.hpp"
-
 #include <chrono>
 #include <cstdint>
 
@@ -21,13 +19,3 @@ inline InterestKind operator|(InterestKind lhs, InterestKind rhs) {
 using Clock = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
 using Duration = Clock::duration;
-
-struct IRuntime {
-    virtual void Submit(IRoutine* routine) = 0;
-
-    virtual void After(TimePoint when, IRoutine* routine) = 0;
-
-    virtual void RegisterFd(RawFd fd) = 0;
-    virtual void DeregisterFd(RawFd fd) = 0;
-    virtual void WhenReady(RawFd fd, InterestKind type, IRoutine* routine) = 0;
-};

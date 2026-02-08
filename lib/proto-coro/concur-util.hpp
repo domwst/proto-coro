@@ -2,7 +2,6 @@
 
 #include "pc.hpp"
 #include "routine.hpp"
-#include "rt.hpp"
 
 #include <memory>
 
@@ -22,11 +21,17 @@ struct Boxed {
 };
 
 template <class T>
-struct Spawn : IRoutine {
-    Spawn(T&& routine) : inner(std::move(routine)) {
+struct In {};
+
+template <class T>
+constexpr inline In<T> in;
+
+template <class T, class Runtime>
+struct Spawn : IRoutine<Runtime> {
+    Spawn(T&& routine, In<Runtime>) : inner(std::move(routine)) {
     }
 
-    void Step(IRuntime* rt) override {
+    void Step(Runtime* rt) override {
         Context ctx{this, rt};
         inner.Step(&ctx);
     }
@@ -52,31 +57,36 @@ struct FMap {
 template <class F>
 FMap(F&&) -> FMap<F>;
 
+namespace detail {
+
+template <class T, class F>
+struct FMapCoro : Pc {
+    FMapCoro(T&& coro, F&& f) : inner(std::move(coro)), f(std::move(f)) {
+    }
+
+    using OutputT = std::invoke_result_t<F, OutputOf<T>>;
+
+    PROTO_CORO(OutputT) {
+        PC_BEGIN;
+
+        {
+            POLL_CORO(auto res, inner);
+            return f(std::move(res));
+        }
+
+        PC_END;
+    }
+
+  private:
+    T inner;
+    F f;
+};
+
+}  // namespace detail
+
 template <class T, class F>
 auto operator|(T&& coro, FMap<F>&& f) {
-    using Output = std::invoke_result_t<F, OutputOf<T>>;
-
-    struct FMapCoro : Pc {
-        FMapCoro(T&& coro, F&& f) : inner(std::move(coro)), f(std::move(f)) {
-        }
-
-        PROTO_CORO(Output) {
-            PC_BEGIN;
-
-            {
-                POLL_CORO(auto res, inner);
-                return f(std::move(res));
-            }
-
-            PC_END;
-        }
-
-      private:
-        T inner;
-        F f;
-    };
-
-    return FMapCoro{std::forward<T>(coro), std::move(f.f)};
+    return detail::FMapCoro{std::forward<T>(coro), std::move(f.f)};
 }
 
 template <class F>
@@ -84,51 +94,56 @@ struct AndThen {
     F f;
 };
 
+namespace detail {
+
+template <class T, class F>
+struct AndThenCoro : Pc {
+    using U = std::invoke_result_t<F, OutputOf<T>>;
+    using OutputT = OutputOf<U>;
+
+    AndThenCoro(T&& coro, F&& f) : first(std::move(coro)), f(std::move(f)) {
+    }
+
+    PROTO_CORO(OutputT) {
+        PC_BEGIN;
+
+        {
+            POLL_CORO(auto res, first);
+            new (second.template Get<U>()) U(f(std::move(*res)));
+        }
+
+        {
+            POLL(auto res, *reinterpret_cast<U*>(second.Get()));
+            reinterpret_cast<U*>(second.Get())->~U();
+            return res;
+        }
+
+        PC_END;
+    }
+
+  private:
+    T first;
+    StorageFor<U> second;
+    F f;
+};
+
+}  // namespace detail
+
 template <class T, class F>
 auto operator|(T&& coro, AndThen<F>&& f) {
-    using U = std::invoke_result_t<F, OutputOf<T>>;
-    using Output = OutputOf<U>;
-
-    struct AndThenCoro : Pc {
-        AndThenCoro(T&& coro, F&& f) : first(std::move(coro)), f(std::move(f)) {
-        }
-
-        PROTO_CORO(Output) {
-            PC_BEGIN;
-
-            {
-                POLL_CORO(auto res, first);
-                new (second.template Get<U>()) U(f(std::move(*res)));
-            }
-
-            {
-                POLL(auto res, *reinterpret_cast<U*>(second.Get()));
-                reinterpret_cast<U*>(second.Get())->~U();
-                return res;
-            }
-
-            PC_END;
-        }
-
-      private:
-        T first;
-        StorageFor<U> second;
-        F f;
-    };
-
-    return AndThenCoro{std::forward<T>(coro), std::move(f.f)};
+    return detail::AndThenCoro{std::forward<T>(coro), std::move(f.f)};
 }
 
-template <class T>
-struct DeletingCoro final : IRoutine {
-    DeletingCoro(T&& routine) : inner_(std::forward<T>(routine)) {
+template <class T, class Runtime>
+struct DeletingCoro final : IRoutine<Runtime> {
+    DeletingCoro(T&& routine, In<Runtime>) : inner_(std::forward<T>(routine)) {
     }
 
     T& GetInner() {
         return inner_;
     }
 
-    void Step(IRuntime* rt) override {
+    void Step(Runtime* rt) override {
         Context ctx{this, rt};
         if (inner_.Step(&ctx).has_value()) {
             delete this;

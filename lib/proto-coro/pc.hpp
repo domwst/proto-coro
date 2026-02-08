@@ -1,21 +1,20 @@
 #pragma once
 
-#include "ctx.hpp"
+#include "ctx.hpp"  // IWYU pragma: export
 
 #include <algorithm>
 #include <cstdint>
-#include <memory>  // IWYU pragma: keep  // std::destroy_at is used in macro expansion
+#include <memory>  // IWYU pragma: export std::destroy_at is used in macro expansion
 #include <type_traits>
 #include <utility>
 
-using State = uint16_t;
+using State = uint32_t;
 
 template <class T>
 using InnerOptional = std::remove_cvref_t<decltype(*std::declval<T>())>;
 
 template <class T>
-using OutputOf = std::remove_cvref_t<decltype(*std::declval<T>().Step(
-    std::declval<const Context*>()))>;
+using OutputOf = T::Output;
 
 constexpr State kInitialState = 0;
 
@@ -115,11 +114,16 @@ struct Unit {};
     }
 
 #define EMPTY
+#define JUST(...) __VA_ARGS__
 
 #define PROTO_CORO_IMPL(ret, where)                                            \
-    std::optional<ret> where Step([[maybe_unused]] const Context* CTX_VAR)
+    template <class Self, class Runtime>                                       \
+    std::optional<ret> where Step(                                             \
+        [[maybe_unused]] const Context<Self, Runtime>* CTX_VAR)
 
-#define PROTO_CORO(ret) PROTO_CORO_IMPL(ret, EMPTY)
+#define PROTO_CORO(ret)                                                        \
+    using Output = ret;                                                        \
+    PROTO_CORO_IMPL(ret, EMPTY)
 
 // A-la aligned union
 template <class... Ts>

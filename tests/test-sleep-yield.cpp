@@ -43,7 +43,8 @@ TEST_CASE("Yield ans sleep") {
                        counter = res;
                        done.Fire();
                        return Unit{};
-                   }}};
+                   }},
+                   in<EventLoop>};
 
     EventLoop loop{2};
     loop.Start();

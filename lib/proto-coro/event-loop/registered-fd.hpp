@@ -1,12 +1,14 @@
 #pragma once
 
+#include "fd-registerer.hpp"
 #include "owned-fd.hpp"
 
 #include <proto-coro/rt.hpp>
 
 struct RegisteredFd : private OwnedFd {
-    RegisteredFd(OwnedFd fd, IRuntime* rt) : OwnedFd(std::move(fd)), rt_(rt) {
-        rt_->RegisterFd(AsRawFd());
+    RegisteredFd(OwnedFd fd, IFdRegisterer* registry)
+        : OwnedFd(std::move(fd)), registry_(registry) {
+        registry_->Register(AsRawFd());
     }
 
     RegisteredFd(RegisteredFd&& other) noexcept = default;
@@ -19,7 +21,7 @@ struct RegisteredFd : private OwnedFd {
         OwnedFd fd{};
         fd.Swap(*this);
         if (fd.IsValid()) {
-            std::exchange(rt_, nullptr)->DeregisterFd(fd.AsRawFd());
+            std::exchange(registry_, nullptr)->Deregister(fd.AsRawFd());
         }
         return fd;
     }
@@ -29,7 +31,7 @@ struct RegisteredFd : private OwnedFd {
     }
 
     void Swap(RegisteredFd& other) noexcept {
-        std::swap(rt_, other.rt_);
+        std::swap(registry_, other.registry_);
         OwnedFd::Swap(other);
     }
 
@@ -38,5 +40,5 @@ struct RegisteredFd : private OwnedFd {
     }
 
   private:
-    IRuntime* rt_ = nullptr;
+    IFdRegisterer* registry_ = nullptr;
 };

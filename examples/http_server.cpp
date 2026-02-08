@@ -15,7 +15,8 @@ struct BufReader {
     BufReader(RegisteredFd& fd) : fd_(fd) {
     }
 
-    std::optional<int> Peek(const Context* ctx) {
+    template <class Self, class Runtime>
+    std::optional<int> Peek(const Context<Self, Runtime>* ctx) {
         READY_DISCARD(TryRefill(ctx));
         if (filled_ == 0) {
             return EOF;
@@ -24,7 +25,9 @@ struct BufReader {
         return buf_[read_to_];
     }
 
-    std::optional<size_t> ReadTo(std::span<char> buf, const Context* ctx) {
+    template <class Self, class Runtime>
+    std::optional<size_t> ReadTo(std::span<char> buf,
+                                 const Context<Self, Runtime>* ctx) {
         READY_DISCARD(TryRefill(ctx));
 
         auto n = std::min(buf.size(), filled_ - read_to_);
@@ -33,7 +36,8 @@ struct BufReader {
         return n;
     }
 
-    std::optional<int> Get(const Context* ctx) {
+    template <class Self, class Runtime>
+    std::optional<int> Get(const Context<Self, Runtime>* ctx) {
         char c;
         READY(auto n, ReadTo(std::span{&c, 1}, ctx));
         if (n == 0) {
@@ -43,7 +47,8 @@ struct BufReader {
     }
 
   private:
-    std::optional<Unit> TryRefill(const Context* ctx) {
+    template <class Self, class Runtime>
+    std::optional<Unit> TryRefill(const Context<Self, Runtime>* ctx) {
         if (read_to_ != filled_) {
             return Unit{};
         }
@@ -72,7 +77,9 @@ struct BufWriter {
     BufWriter(RegisteredFd& fd) : fd_(fd) {
     }
 
-    std::optional<size_t> Write(std::span<const char> buf, const Context* ctx) {
+    template <class Self, class Runtime>
+    std::optional<size_t> Write(std::span<const char> buf,
+                                const Context<Self, Runtime>* ctx) {
         READY_DISCARD(MaybeFlush(ctx));
         auto n = std::min(buf.size(), sizeof(buf_) - filled_);
         std::copy_n(buf.begin(), n, buf_ + filled_);
@@ -80,7 +87,8 @@ struct BufWriter {
         return n;
     }
 
-    std::optional<Unit> Flush(const Context* ctx) {
+    template <class Self, class Runtime>
+    std::optional<Unit> Flush(const Context<Self, Runtime>* ctx) {
         while (written_ < filled_) {
             auto r = write(fd_.AsRawFd(), buf_ + written_, filled_ - written_);
             if (r < 0) {
@@ -102,7 +110,8 @@ struct BufWriter {
     }
 
   private:
-    std::optional<Unit> MaybeFlush(const Context* ctx) {
+    template <class Self, class Runtime>
+    std::optional<Unit> MaybeFlush(const Context<Self, Runtime>* ctx) {
         if (filled_ < sizeof(buf_)) {
             return Unit{};
         }
@@ -298,7 +307,8 @@ struct Listener : Pc {
                     Fail("accept");
                 }
                 RegisteredFd rfd(OwnedFd::FromRaw(fd), CTX_VAR->rt);
-                auto srv = new DeletingCoro{RequestServe(std::move(rfd))};
+                auto srv =
+                    new DeletingCoro{RequestServe(std::move(rfd)), in<Runtime>};
                 srv->GetInner().Pin();
                 CTX_VAR->rt->Submit(srv);
             }
@@ -314,7 +324,8 @@ struct Server : Pc {
     Server(uint16_t port) : port_(port) {
     }
 
-    void Setup(IRuntime* rt) {
+    template <class Runtime>
+    void Setup(Runtime* rt) {
         int sfd =
             socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
         if (sfd < 0) {
@@ -378,7 +389,8 @@ int main() {
     auto routine = Spawn{std::move(server) | FMap{[&done](Unit) {
                              done.Fire();
                              return Unit{};
-                         }}};
+                         }},
+                         in<EventLoop>};
     loop.Submit(&routine);
     done.Wait();
 

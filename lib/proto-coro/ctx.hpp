@@ -1,9 +1,7 @@
 #pragma once
 
-struct IRuntime;
-struct IRoutine;
-
+template <class Self, class Runtime>
 struct Context {
-    IRoutine* self;
-    IRuntime* rt;
+    Self* self;
+    Runtime* rt;
 };

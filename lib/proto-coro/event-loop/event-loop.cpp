@@ -55,11 +55,11 @@ struct EventLoop::Impl {
         epoll_thread_.join();
     }
 
-    void Submit(IRoutine* routine) {
+    void Submit(EventLoop::Task* routine) {
         tasks_.Push(routine);
     }
 
-    void After(TimePoint when, IRoutine* routine) {
+    void After(TimePoint when, EventLoop::Task* routine) {
         timers_.Push(when, routine);
     }
 
@@ -75,7 +75,7 @@ struct EventLoop::Impl {
         }
     }
 
-    void WhenReady(int fd, InterestKind type, IRoutine* routine) {
+    void WhenReady(int fd, InterestKind type, EventLoop::Task* routine) {
         Release(routine);
         uint32_t epoll_flags = EPOLLONESHOT;
         auto utype = static_cast<uint8_t>(type);
@@ -110,16 +110,16 @@ struct EventLoop::Impl {
         while (auto tasks = epoll_.Poll(-1, s)) {
             for (auto& task : s.first(*tasks)) {
                 Acquire(task.second);
-                Submit(static_cast<IRoutine*>(task.second));
+                Submit(static_cast<EventLoop::Task*>(task.second));
             }
         }
     }
 
     std::vector<std::thread> workers_;
-    MPMCQueue<IRoutine*> tasks_;
+    MPMCQueue<EventLoop::Task*> tasks_;
 
     std::thread timer_thread_;
-    MPSCTimerQueue<IRoutine*> timers_;
+    MPSCTimerQueue<EventLoop::Task*> timers_;
 
     std::thread epoll_thread_;
     Epoll epoll_;
@@ -136,23 +136,23 @@ void EventLoop::Stop() {
     impl_->Stop();
 }
 
-void EventLoop::Submit(IRoutine* routine) {
+void EventLoop::Submit(EventLoop::Task* routine) {
     impl_->Submit(routine);
 }
 
-void EventLoop::After(TimePoint when, IRoutine* routine) {
+void EventLoop::After(TimePoint when, EventLoop::Task* routine) {
     impl_->After(when, routine);
 }
 
-void EventLoop::RegisterFd(int fd) {
+void EventLoop::Register(int fd) {
     impl_->RegisterFd(fd);
 }
 
-void EventLoop::DeregisterFd(int fd) {
+void EventLoop::Deregister(int fd) {
     impl_->DeregisterFd(fd);
 }
 
-void EventLoop::WhenReady(int fd, InterestKind type, IRoutine* routine) {
+void EventLoop::WhenReady(int fd, InterestKind type, EventLoop::Task* routine) {
     impl_->WhenReady(fd, type, routine);
 }
 
