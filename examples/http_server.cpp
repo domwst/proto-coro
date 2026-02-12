@@ -307,8 +307,8 @@ struct Listener : Pc {
                     Fail("accept");
                 }
                 RegisteredFd rfd(OwnedFd::FromRaw(fd), CTX_VAR->rt);
-                auto srv =
-                    new DeletingCoro{RequestServe(std::move(rfd)), in<Runtime>};
+                auto srv = new SpawnDeleting{RequestServe(std::move(rfd)),
+                                             in<Runtime>};
                 srv->GetInner().Pin();
                 CTX_VAR->rt->Submit(srv);
             }

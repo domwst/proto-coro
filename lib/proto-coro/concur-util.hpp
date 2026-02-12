@@ -135,8 +135,8 @@ auto operator|(T&& coro, AndThen<F>&& f) {
 }
 
 template <class T, class Runtime>
-struct DeletingCoro final : IRoutine<Runtime> {
-    DeletingCoro(T&& routine, In<Runtime>) : inner_(std::forward<T>(routine)) {
+struct SpawnDeleting final : IRoutine<Runtime> {
+    SpawnDeleting(T&& routine, In<Runtime>) : inner_(std::forward<T>(routine)) {
     }
 
     T& GetInner() {

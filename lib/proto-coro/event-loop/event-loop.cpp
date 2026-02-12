@@ -4,6 +4,7 @@
 #include "fail.hpp"
 #include "mpmc-queue.hpp"
 #include "mpsc-timer-queue.hpp"
+#include "thread-pool.hpp"
 
 #include <proto-coro/unused.hpp>
 
@@ -32,31 +33,28 @@ static void Release(void*) {
 }
 #endif
 
-struct EventLoop::Impl {
-    Impl(size_t num_workers) : workers_(num_workers) {
+struct EventLoop::Impl : ThreadPool<EventLoop> {
+    Impl(size_t num_workers) : ThreadPool<EventLoop>(num_workers) {
     }
 
     void Start(EventLoop* self) {
-        for (auto& worker : workers_) {
-            worker = std::thread(&Impl::WorkerThread, this, self);
-        }
+        ThreadPool<EventLoop>::Start(self);
         timer_thread_ = std::thread(&Impl::TimerThread, this);
         epoll_thread_ = std::thread(&Impl::EpollThread, this);
     }
 
     void Stop() {
-        tasks_.Close();
-        timers_.Close();
         epoll_.Close();
-        for (auto& worker : workers_) {
-            worker.join();
-        }
-        timer_thread_.join();
         epoll_thread_.join();
+
+        timers_.Close();
+        timer_thread_.join();
+
+        ThreadPool<EventLoop>::Stop();
     }
 
     void Submit(EventLoop::Task* routine) {
-        tasks_.Push(routine);
+        ThreadPool<EventLoop>::Submit(routine);
     }
 
     void After(TimePoint when, EventLoop::Task* routine) {
@@ -92,12 +90,6 @@ struct EventLoop::Impl {
     }
 
   private:
-    void WorkerThread(EventLoop* self) {
-        while (auto task = tasks_.Pop()) {
-            (*task)->Step(self);
-        }
-    }
-
     void TimerThread() {
         while (auto task = timers_.Pop()) {
             Submit(*task);
@@ -114,9 +106,6 @@ struct EventLoop::Impl {
             }
         }
     }
-
-    std::vector<std::thread> workers_;
-    MPMCQueue<EventLoop::Task*> tasks_;
 
     std::thread timer_thread_;
     MPSCTimerQueue<EventLoop::Task*> timers_;
