@@ -33,3 +33,12 @@ jobs:
       - name: Test
         run: |
           ./build/${{ matrix.build_type }}/tests/proto_coro_tests
+
+      - name: Test fthreads
+        if: matrix.build_type == 'Debug' || matrix.build_type == 'Release'
+        env:
+          PREEMPTION: On
+          RANDOMIZE: On
+          RUST_LOG: info
+        run: |
+          ./build/${{ matrix.build_type }}/tests/proto_coro_fthreads_tests
