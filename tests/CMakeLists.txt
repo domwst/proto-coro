@@ -16,6 +16,7 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Tsan" AND NOT CMAKE_BUILD_TYPE STREQUAL "Asan
   set(FTHREADS_LIB "${CMAKE_BINARY_DIR}/_deps/libfthreads.a")
   file(
     DOWNLOAD https://files.kek.today/libfthreads.a "${FTHREADS_LIB}"
+    EXPECTED_HASH SHA256=eeed8d919d048d680ff33254a5910ef003f48a7b144183eb5e4fab1cbccc0184
     TLS_VERIFY ON
   )
 

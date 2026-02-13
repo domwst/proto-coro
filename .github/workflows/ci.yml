@@ -39,6 +39,6 @@ jobs:
         env:
           PREEMPTION: On
           RANDOMIZE: On
-          RUST_LOG: info
+          LOG: info
         run: |
           ./build/${{ matrix.build_type }}/tests/proto_coro_fthreads_tests
