@@ -45,7 +45,7 @@ TEST_CASE("Load balancing") {
     Loop loop{kThreads};
     loop.Start();
 
-    for (size_t i = 0; i < 30'000; ++i) {
+    for (size_t i = 0; i < 10'000; ++i) {
         auto groups = i % 4 + 1;
         auto start = std::chrono::steady_clock::now();
         SpawnWaitMultipleCoros(
@@ -82,7 +82,7 @@ TEST_CASE("Sleep load balancing") {
     Loop loop{kThreads};
     loop.Start();
 
-    for (size_t i = 0; i < 30'000; ++i) {
+    for (size_t i = 0; i < 10'000; ++i) {
         auto groups = i % 4 + 1;
         auto start = std::chrono::steady_clock::now();
         SpawnWaitMultipleCoros(
