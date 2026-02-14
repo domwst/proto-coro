@@ -15,6 +15,9 @@ add_executable(proto_coro_real_tests
 )
 target_link_libraries(proto_coro_real_tests PRIVATE falter proto_coro Catch2::Catch2WithMain)
 
+include(CTest)
+include(Catch)
+
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Tsan" AND NOT CMAKE_BUILD_TYPE STREQUAL "Asan")
   set(FTHREADS_LIB "${CMAKE_BINARY_DIR}/_deps/libfthreads.a")
   file(
@@ -34,9 +37,7 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Tsan" AND NOT CMAKE_BUILD_TYPE STREQUAL "Asan
     proto_coro_sim_tests
       PRIVATE proto_coro Catch2::Catch2WithMain fthreads
   )
+  catch_discover_tests(proto_coro_sim_tests)
 endif()
 
-include(CTest)
-include(Catch)
 catch_discover_tests(proto_coro_real_tests)
-catch_discover_tests(proto_coro_sim_tests)
