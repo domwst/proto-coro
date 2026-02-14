@@ -2,15 +2,13 @@
 
 #include "epoll.hpp"
 #include "fail.hpp"
-#include "mpmc-queue.hpp"
-#include "mpsc-timer-queue.hpp"
 #include "thread-pool.hpp"
+#include "timer-thread.hpp"
 
 #include <proto-coro/unused.hpp>
 
 #include <sys/epoll.h>
 #include <thread>
-#include <vector>
 
 #ifdef TSAN
 extern "C" {
@@ -33,13 +31,13 @@ static void Release(void*) {
 }
 #endif
 
-struct EventLoop::Impl : ThreadPool<EventLoop> {
+struct EventLoop::Impl : ThreadPool<EventLoop>, TimerThread<EventLoop> {
     Impl(size_t num_workers) : ThreadPool<EventLoop>(num_workers) {
     }
 
     void Start(EventLoop* self) {
         ThreadPool<EventLoop>::Start(self);
-        timer_thread_ = std::thread(&Impl::TimerThread, this);
+        TimerThread<EventLoop>::Start(self);
         epoll_thread_ = std::thread(&Impl::EpollThread, this);
     }
 
@@ -47,19 +45,12 @@ struct EventLoop::Impl : ThreadPool<EventLoop> {
         epoll_.Close();
         epoll_thread_.join();
 
-        timers_.Close();
-        timer_thread_.join();
-
+        TimerThread<EventLoop>::Stop();
         ThreadPool<EventLoop>::Stop();
     }
 
-    void Submit(EventLoop::Task* routine) {
-        ThreadPool<EventLoop>::Submit(routine);
-    }
-
-    void After(TimePoint when, EventLoop::Task* routine) {
-        timers_.Push(when, routine);
-    }
+    using TimerThread<EventLoop>::After;
+    using ThreadPool<EventLoop>::Submit;
 
     void RegisterFd(int fd) {
         if (epoll_.Register(fd, 0, nullptr) < 0) {
@@ -90,12 +81,6 @@ struct EventLoop::Impl : ThreadPool<EventLoop> {
     }
 
   private:
-    void TimerThread() {
-        while (auto task = timers_.Pop()) {
-            Submit(*task);
-        }
-    }
-
     void EpollThread() {
         std::pair<uint32_t, void*> buf[16];
         auto s = std::span{buf};
@@ -106,9 +91,6 @@ struct EventLoop::Impl : ThreadPool<EventLoop> {
             }
         }
     }
-
-    std::thread timer_thread_;
-    MPSCTimerQueue<EventLoop::Task*> timers_;
 
     std::thread epoll_thread_;
     Epoll epoll_;

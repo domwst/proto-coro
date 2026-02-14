@@ -1,6 +1,7 @@
 #pragma once
 
 #include <proto-coro/rt.hpp>
+#include <proto-coro/unused.hpp>
 
 #include <cassert>
 #include <condition_variable>
@@ -56,7 +57,7 @@ struct MPSCTimerQueue {
         mutable T value;
 
         bool operator<(const Item& other) const {
-            return when < other.when;
+            return when > other.when;
         }
     };
 

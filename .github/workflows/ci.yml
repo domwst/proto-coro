@@ -30,15 +30,15 @@ jobs:
         run: |
           ninja -C build/${{ matrix.build_type }}
 
-      - name: Test
+      - name: Test real
         run: |
-          ./build/${{ matrix.build_type }}/tests/proto_coro_tests
+          ./build/${{ matrix.build_type }}/tests/proto_coro_real_tests
 
-      - name: Test fthreads
+      - name: Test sim
         if: matrix.build_type == 'Debug' || matrix.build_type == 'Release'
         env:
           PREEMPTION: On
           RANDOMIZE: On
           LOG: info
         run: |
-          ./build/${{ matrix.build_type }}/tests/proto_coro_fthreads_tests
+          ./build/${{ matrix.build_type }}/tests/proto_coro_sim_tests
