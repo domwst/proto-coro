@@ -6,6 +6,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
+include(CTest)
+include(Catch)
+
 file(GLOB_RECURSE COMMON_TEST_SOURCES CONFIGURE_DEPENDS common/*.cpp)
 file(GLOB_RECURSE REAL_TEST_SOURCES CONFIGURE_DEPENDS real/*.cpp)
 file(GLOB_RECURSE SIM_TEST_SOURCES CONFIGURE_DEPENDS sim/*.cpp)
@@ -15,8 +18,7 @@ add_executable(proto_coro_real_tests
 )
 target_link_libraries(proto_coro_real_tests PRIVATE falter proto_coro Catch2::Catch2WithMain)
 
-include(CTest)
-include(Catch)
+catch_discover_tests(proto_coro_real_tests)
 
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Tsan" AND NOT CMAKE_BUILD_TYPE STREQUAL "Asan")
   set(FTHREADS_LIB "${CMAKE_BINARY_DIR}/_deps/libfthreads.a")
@@ -39,5 +41,3 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Tsan" AND NOT CMAKE_BUILD_TYPE STREQUAL "Asan
   )
   catch_discover_tests(proto_coro_sim_tests)
 endif()
-
-catch_discover_tests(proto_coro_real_tests)
