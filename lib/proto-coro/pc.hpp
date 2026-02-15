@@ -102,7 +102,7 @@ struct Unit {};
     reinterpret_cast<callable_t*>(this->pc_callee_storage.Get())
 
 #define _CALL(callable_t, result, ...)                                         \
-    new (this->pc_callee_storage.Get<callable_t>()) __VA_ARGS__;               \
+    new (this->pc_callee_storage.template Get<callable_t>()) __VA_ARGS__;      \
     POLL_CORO(result, *_CALLEE_PTR(callable_t));                               \
     std::destroy_at(_CALLEE_PTR(callable_t))
 

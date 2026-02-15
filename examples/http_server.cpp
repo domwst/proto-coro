@@ -11,12 +11,14 @@
 #include <cassert>
 #include <iostream>
 
+template <class Rt>
 struct BufReader {
-    BufReader(RegisteredFd& fd) : fd_(fd) {
+    BufReader(RegisteredFd<Rt>& fd) : fd_(fd) {
     }
 
     template <class Self, class Runtime>
     std::optional<int> Peek(const Context<Self, Runtime>* ctx) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         READY_DISCARD(TryRefill(ctx));
         if (filled_ == 0) {
             return EOF;
@@ -28,6 +30,7 @@ struct BufReader {
     template <class Self, class Runtime>
     std::optional<size_t> ReadTo(std::span<char> buf,
                                  const Context<Self, Runtime>* ctx) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         READY_DISCARD(TryRefill(ctx));
 
         auto n = std::min(buf.size(), filled_ - read_to_);
@@ -38,6 +41,7 @@ struct BufReader {
 
     template <class Self, class Runtime>
     std::optional<int> Get(const Context<Self, Runtime>* ctx) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         char c;
         READY(auto n, ReadTo(std::span{&c, 1}, ctx));
         if (n == 0) {
@@ -67,19 +71,21 @@ struct BufReader {
         return Unit{};
     }
 
-    RegisteredFd& fd_;
+    RegisteredFd<Rt>& fd_;
     char buf_[4096];
     size_t filled_ = 0;
     size_t read_to_ = 0;
 };
 
+template <class Rt>
 struct BufWriter {
-    BufWriter(RegisteredFd& fd) : fd_(fd) {
+    BufWriter(RegisteredFd<Rt>& fd) : fd_(fd) {
     }
 
     template <class Self, class Runtime>
     std::optional<size_t> Write(std::span<const char> buf,
                                 const Context<Self, Runtime>* ctx) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         READY_DISCARD(MaybeFlush(ctx));
         auto n = std::min(buf.size(), sizeof(buf_) - filled_);
         std::copy_n(buf.begin(), n, buf_ + filled_);
@@ -89,6 +95,7 @@ struct BufWriter {
 
     template <class Self, class Runtime>
     std::optional<Unit> Flush(const Context<Self, Runtime>* ctx) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         while (written_ < filled_) {
             auto r = write(fd_.AsRawFd(), buf_ + written_, filled_ - written_);
             if (r < 0) {
@@ -118,19 +125,21 @@ struct BufWriter {
         return Flush(ctx);
     }
 
-    RegisteredFd& fd_;
+    RegisteredFd<Rt>& fd_;
 
     size_t filled_ = 0;
     size_t written_ = 0;
     char buf_[4096];
 };
 
+template <class Rt>
 struct WriteAll : Pc {
-    WriteAll(BufWriter& writer, std::span<const char> buf)
+    WriteAll(BufWriter<Rt>& writer, std::span<const char> buf)
         : writer_(writer), buf_(buf) {
     }
 
     PROTO_CORO(size_t) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         PC_BEGIN;
 
         while (!buf_.empty()) {
@@ -148,7 +157,7 @@ struct WriteAll : Pc {
     }
 
   private:
-    BufWriter& writer_;
+    BufWriter<Rt>& writer_;
     size_t written_ = 0;
     std::span<const char> buf_;
 };
@@ -159,13 +168,15 @@ struct Response {
     std::span<const char> body;
 };
 
+template <class Rt>
 struct WriteResponse : Pc {
-    WriteResponse(BufWriter& writer, Response& response)
+    WriteResponse(BufWriter<Rt>& writer, Response& response)
         : writer_(writer), response_(response) {
         headers_it_ = response.headers.begin();
     }
 
     PROTO_CORO(Unit) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         PC_BEGIN;
 
         {
@@ -192,20 +203,22 @@ struct WriteResponse : Pc {
     }
 
   private:
-    BufWriter& writer_;
+    BufWriter<Rt>& writer_;
     Response& response_;
     std::vector<std::pair<std::string, std::string>>::iterator headers_it_;
     std::string buf_;
-    CALLS(WriteAll);
+    CALLS(WriteAll<Rt>);
 };
 
+template <class Rt>
 struct ReadHeader : Pc {
     constexpr static std::string_view kHeaderSuffix = "\r\n\r\n";
 
-    ReadHeader(BufReader& reader) : reader_(reader) {
+    ReadHeader(BufReader<Rt>& reader) : reader_(reader) {
     }
 
     PROTO_CORO(std::string) {
+        static_assert(std::is_same_v<Rt, Runtime>);
         PC_BEGIN;
 
         while (buf_.size() < kHeaderSuffix.size() ||
@@ -225,11 +238,12 @@ struct ReadHeader : Pc {
 
   private:
     std::string buf_;
-    BufReader& reader_;
+    BufReader<Rt>& reader_;
 };
 
+template <class Rt>
 struct RequestServe : Pc {
-    RequestServe(RegisteredFd fd) : fd_(std::move(fd)) {
+    RequestServe(RegisteredFd<Rt> fd) : fd_(std::move(fd)) {
     }
 
     void Pin() {
@@ -274,19 +288,20 @@ struct RequestServe : Pc {
     }
 
   private:
-    CALLS(ReadHeader, WriteResponse);
+    CALLS(ReadHeader<Rt>, WriteResponse<Rt>);
 
-    RegisteredFd fd_;
-    std::optional<BufReader> reader_;
-    std::optional<BufWriter> writer_;
+    RegisteredFd<Rt> fd_;
+    std::optional<BufReader<Rt>> reader_;
+    std::optional<BufWriter<Rt>> writer_;
     Response response_{};
     std::string body_buf_;
 };
 
+template <class Rt>
 struct Listener : Pc {
-    RegisteredFd sfd;
+    RegisteredFd<Rt> sfd;
 
-    Listener(RegisteredFd fd) : sfd(std::move(fd)) {
+    Listener(RegisteredFd<Rt> fd) : sfd(std::move(fd)) {
     }
 
     PROTO_CORO(Unit) {
@@ -320,6 +335,7 @@ struct Listener : Pc {
     }
 };
 
+template <class Rt>
 struct Server : Pc {
     Server(uint16_t port) : port_(port) {
     }
@@ -374,15 +390,15 @@ struct Server : Pc {
 
   private:
     uint16_t port_;
-    std::optional<RegisteredFd> sfd_;
-    CALLS(Listener);
+    std::optional<RegisteredFd<Rt>> sfd_;
+    CALLS(Listener<Rt>);
 };
 
 int main() {
     EventLoop loop{2};
     loop.Start();
 
-    Server server{3333};
+    Server<EventLoop> server{3333};
     server.Setup(&loop);
 
     ThreadOneshotEvent done;

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "fd-registerer.hpp"
 #include "owned-fd.hpp"
 
 #include <proto-coro/rt.hpp>
 
+template <class FdRegisterer>
 struct RegisteredFd : private OwnedFd {
-    RegisteredFd(OwnedFd fd, IFdRegisterer* registry)
+    RegisteredFd(OwnedFd fd, FdRegisterer* registry)
         : OwnedFd(std::move(fd)), registry_(registry) {
         registry_->Register(AsRawFd());
     }
@@ -40,5 +40,5 @@ struct RegisteredFd : private OwnedFd {
     }
 
   private:
-    IFdRegisterer* registry_ = nullptr;
+    FdRegisterer* registry_ = nullptr;
 };

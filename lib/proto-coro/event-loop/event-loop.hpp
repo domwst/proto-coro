@@ -1,12 +1,10 @@
 #pragma once
 
-#include "fd-registerer.hpp"
-
 #include <proto-coro/fast-pimpl.hpp>
 #include <proto-coro/routine.hpp>
 #include <proto-coro/rt.hpp>
 
-struct EventLoop : IFdRegisterer {
+struct EventLoop {
     using Task = IRoutine<EventLoop>;
 
     EventLoop(size_t num_workers);
@@ -19,8 +17,8 @@ struct EventLoop : IFdRegisterer {
 
     void After(TimePoint when, Task* routine);
 
-    void Register(int fd) override;
-    void Deregister(int fd) override;
+    void Register(int fd);
+    void Deregister(int fd);
     void WhenReady(int fd, InterestKind type, Task* routine);
 
     ~EventLoop();
