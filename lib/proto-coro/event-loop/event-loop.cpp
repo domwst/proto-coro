@@ -4,6 +4,7 @@
 #include "thread-pool.hpp"
 #include "timer-thread.hpp"
 
+#include <proto-coro/concepts.hpp>
 #include <proto-coro/unused.hpp>
 
 #include <sys/epoll.h>
@@ -59,3 +60,7 @@ void EventLoop::WhenReady(int fd, InterestKind type, EventLoop::Task* routine) {
 }
 
 EventLoop::~EventLoop() = default;
+
+static_assert(Executor<EventLoop>);
+static_assert(Timers<EventLoop>);
+static_assert(IOManager<EventLoop>);

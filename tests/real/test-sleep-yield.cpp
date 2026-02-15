@@ -13,9 +13,6 @@ using namespace std::chrono_literals;
 namespace {
 
 struct Coro : Pc {
-    Coro() {
-    }
-
     PROTO_CORO(int) {
         PC_BEGIN;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <proto-coro/concepts.hpp>
 #include <proto-coro/event-loop/thread-pool.hpp>
 #include <proto-coro/event-loop/timer-thread.hpp>
 
@@ -19,3 +20,7 @@ struct Loop : ThreadPool<Loop>, TimerThread<Loop> {
     using TimerThread<Loop>::After;
     using ThreadPool<Loop>::Submit;
 };
+
+static_assert(Executor<Loop>);
+static_assert(Timers<Loop>);
+static_assert(!IOManager<Loop>);
