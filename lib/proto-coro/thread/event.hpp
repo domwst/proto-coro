@@ -3,6 +3,8 @@
 #include <condition_variable>
 #include <mutex>
 
+// AKA folly::Baton
+// https://github.com/facebook/folly/blob/main/folly/synchronization/Baton.h
 struct ThreadOneshotEvent {
     void Fire() {
         std::lock_guard lk{m_};

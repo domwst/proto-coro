@@ -3,6 +3,8 @@
 #include <condition_variable>
 #include <mutex>
 
+// Currently has better interface
+// https://gobyexample.com/waitgroups
 struct ThreadWaitGroup {
     void Add(size_t count = 1) {
         std::lock_guard lk{m_};

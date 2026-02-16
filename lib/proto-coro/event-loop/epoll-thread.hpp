@@ -40,18 +40,18 @@ struct EpollThread {
     }
 
     void Stop() {
-        epoll_->Close();
+        epoll_.value().Close();
         epoll_thread_.join();
     }
 
     void RegisterFd(int fd) {
-        if (epoll_->Register(fd, 0, nullptr) < 0) {
+        if (epoll_.value().Register(fd, 0, nullptr) < 0) {
             Fail("register fd");
         }
     }
 
     void DeregisterFd(int fd) {
-        if (epoll_->Deregister(fd) < 0) {
+        if (epoll_.value().Deregister(fd) < 0) {
             Fail("deregister fd");
         }
     }
@@ -67,7 +67,7 @@ struct EpollThread {
             epoll_flags |= EPOLLOUT;
         }
 
-        if (epoll_->Modify(fd, epoll_flags, routine) < 0) {
+        if (epoll_.value().Modify(fd, epoll_flags, routine) < 0) {
             Fail("modify fd");
         }
     }
@@ -76,7 +76,8 @@ struct EpollThread {
     void EpollThreadBody(Runtime* self) {
         std::pair<uint32_t, void*> buf[16];
         auto s = std::span{buf};
-        while (auto tasks = epoll_->Poll(-1, s)) {
+        auto& epoll = epoll_.value();
+        while (auto tasks = epoll.Poll(-1, s)) {
             for (auto& task : s.first(*tasks)) {
                 TsanAcquire(task.second);
                 self->Submit(static_cast<Task*>(task.second));
