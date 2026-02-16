@@ -141,7 +141,7 @@ TEST_CASE("Sleep multiplexing") {
         sleeps.push_back(1s * i);
     }
 
-    for (size_t i = 0; i < 10'000; ++i) {
+    for (size_t i = 0; i < 5'000; ++i) {
         auto start = std::chrono::steady_clock::now();
         SpawnWaitMultipleCoros(
             loop,
@@ -150,7 +150,7 @@ TEST_CASE("Sleep multiplexing") {
                 std::ranges::shuffle(s, rng);
                 return SleepingCoro{std::move(s)};
             },
-            kThreads);
+            kThreads * 10);
         auto elapsed = std::chrono::steady_clock::now() - start;
         REQUIRE(elapsed >= 55s);
         REQUIRE(elapsed <= 55s + 100ms);
