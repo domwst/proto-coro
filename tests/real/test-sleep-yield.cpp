@@ -2,7 +2,7 @@
 #include <proto-coro/event-loop/event-loop.hpp>
 #include <proto-coro/pc.hpp>
 #include <proto-coro/rt.hpp>
-#include <proto-coro/thread/event.hpp>
+#include <proto-coro/thread/wait-group.hpp>
 
 #include <falter/interface.hpp>
 
@@ -13,41 +13,55 @@ using namespace std::chrono_literals;
 namespace {
 
 struct Coro : Pc {
+    Coro(size_t iters) : iters(iters) {
+    }
+
     PROTO_CORO(int) {
         PC_BEGIN;
 
-        ++counter;
-        YIELD;
-        ++counter;
-        YIELD;
-        ++counter;
+        for (i = 0; i < iters; ++i) {
+            ++counter;
+            YIELD;
+        }
 
         SLEEP_FOR(100ms);
         ++counter;
+
         return counter;
 
         PC_END;
     }
 
     int counter = 0;
+
+    size_t iters;
+    size_t i;
 };
 
 TEST_CASE("Yield ans sleep") {
-    ThreadOneshotEvent done;
-    int counter;
-
-    auto c =
-        Spawn{Coro{} | StoreResult(counter) | ThenFire(done), in<EventLoop>};
+    ThreadWaitGroup wg;
 
     EventLoop loop{2};
     loop.Start();
 
-    loop.Submit(&c);
-    done.Wait();
+    constexpr size_t kCoros = 10;
+    int counters[kCoros];
+    for (size_t i = 0; i < kCoros; ++i) {
+        wg.Add();
+        auto c = new Spawn{Coro{i} | StoreResult(counters[i]) | ThenDone(wg) |
+                               AndThen(SelfDestruct),
+                           in<EventLoop>};
+
+        loop.Submit(c);
+    }
+
+    wg.Wait();
 
     loop.Stop();
 
-    REQUIRE(counter == 4);
+    for (size_t i = 0; i < kCoros; ++i) {
+        REQUIRE(counters[i] == static_cast<int>(i + 1));
+    }
     WARN("Falter stats: " << GlobalStats());
 }
 
