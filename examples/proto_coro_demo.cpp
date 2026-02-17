@@ -74,11 +74,7 @@ int main() {
 
     ThreadOneshotEvent event;
 
-    auto routine = Spawn{YieldSleep{} | FMap{[&](Unit) {
-                             event.Fire();
-                             return Unit{};
-                         }},
-                         in<EventLoop>};
+    auto routine = Spawn{YieldSleep{} | ThenFire(event), in<EventLoop>};
 
     loop.Submit(&routine);
     event.Wait();

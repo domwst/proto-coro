@@ -1,5 +1,8 @@
 #pragma once
 
+// SOURCE:
+// https://github.com/userver-framework/userver/blob/develop/universal/include/userver/utils/fast_pimpl.hpp
+
 /// @file userver/utils/fast_pimpl.hpp
 /// @brief @copybrief utils::FastPimpl
 

@@ -134,9 +134,9 @@ struct StorageFor {
     alignas(kAlignment) char data_[kSize];
 
     template <class T>  // Optional safety check
-    void* Get() {
+    T* Get() {
         static_assert(sizeof(T) <= kSize && alignof(T) <= kAlignment);
-        return Get();
+        return reinterpret_cast<T*>(Get());
     }
 
     void* Get() {

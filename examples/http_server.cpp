@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 
 #include <cassert>
+#include <format>
 #include <iostream>
 
 template <class Rt>
@@ -246,14 +247,11 @@ struct RequestServe : Pc {
     RequestServe(RegisteredFd<Rt> fd) : fd_(std::move(fd)) {
     }
 
-    void Pin() {
-        reader_.emplace(fd_);
-        writer_.emplace(fd_);
-    }
-
     PROTO_CORO(Unit) {
         PC_BEGIN;
 
+        reader_.emplace(fd_);
+        writer_.emplace(fd_);
         {
             CALL(auto header, ReadHeader{*reader_});
             std::cout << "Received header: " << header << std::endl;
@@ -262,18 +260,18 @@ struct RequestServe : Pc {
             response_.headers.emplace_back("Content-Type", "text/html");
             response_.headers.emplace_back("Connection", "close");
 
-            body_buf_ = R"(<!doctype html>
+            body_buf_ = std::format(R"(<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Title</title>
   </head>
-  <body><h3>Your header</h3><pre>)" +
-                        header + R"(</pre>
+  <body><h3>Your headers are</h3><pre>{}</pre>
   </body>
 </html>
-)";
+)",
+                                    header);
             response_.body = body_buf_;
         }
 
@@ -322,9 +320,9 @@ struct Listener : Pc {
                     Fail("accept");
                 }
                 RegisteredFd rfd(OwnedFd::FromRaw(fd), CTX_VAR->rt);
-                auto srv = new SpawnDeleting{RequestServe(std::move(rfd)),
-                                             in<Runtime>};
-                srv->GetInner().Pin();
+                auto srv = new Spawn{RequestServe(std::move(rfd)) |
+                                         AndThen{SelfDestruct},
+                                     in<Runtime>};
                 CTX_VAR->rt->Submit(srv);
             }
 
@@ -402,11 +400,7 @@ int main() {
     server.Setup(&loop);
 
     ThreadOneshotEvent done;
-    auto routine = Spawn{std::move(server) | FMap{[&done](Unit) {
-                             done.Fire();
-                             return Unit{};
-                         }},
-                         in<EventLoop>};
+    auto routine = Spawn{std::move(server) | ThenFire(done), in<EventLoop>};
     loop.Submit(&routine);
     done.Wait();
 

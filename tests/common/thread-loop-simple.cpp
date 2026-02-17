@@ -15,14 +15,23 @@ struct TP : ThreadPool<TP> {
 };
 
 struct YieldCoro : Pc {
-    YieldCoro(size_t cnt) : cnt(cnt) {
+    YieldCoro() : self(this) {
+    }
+
+    YieldCoro(size_t cnt_) : YieldCoro() {
+        cnt = cnt_;
+    }
+
+    YieldCoro(YieldCoro&& other) : YieldCoro(other.cnt) {
     }
 
     PROTO_CORO(Unit) {
         PC_BEGIN;
 
+        REQUIRE(self == this);
         for (; i < cnt; ++i) {
             YIELD;
+            REQUIRE(self == this);
         }
 
         return Unit{};
@@ -32,6 +41,7 @@ struct YieldCoro : Pc {
 
     size_t i = 0;
     size_t cnt;
+    YieldCoro* self;
 };
 
 TEST_CASE("ThreadPool") {
@@ -43,11 +53,9 @@ TEST_CASE("ThreadPool") {
 
     for (size_t i = 0; i < 10; ++i) {
         wg.Add();
-        tp.Submit(new SpawnDeleting{YieldCoro{10 + 20 * i} | FMap{[&wg](Unit) {
-                                        wg.Done();
-                                        return Unit{};
-                                    }},
-                                    in<TP>});
+        tp.Submit(new Spawn{YieldCoro{10 + 20 * i} | ThenDone(wg) |
+                                AndThen(SelfDestruct),
+                            in<TP>});
     }
 
     wg.Wait();

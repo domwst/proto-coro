@@ -36,12 +36,8 @@ TEST_CASE("Yield ans sleep") {
     ThreadOneshotEvent done;
     int counter;
 
-    auto c = Spawn{Coro{} | FMap{[&done, &counter](auto&& res) {
-                       counter = res;
-                       done.Fire();
-                       return Unit{};
-                   }},
-                   in<EventLoop>};
+    auto c =
+        Spawn{Coro{} | StoreResult(counter) | ThenFire(done), in<EventLoop>};
 
     EventLoop loop{2};
     loop.Start();

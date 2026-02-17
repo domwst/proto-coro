@@ -31,11 +31,8 @@ static void SpawnWaitMultipleCoros(Runtime& loop, F coro, size_t num_coros) {
     ThreadWaitGroup wg;
     for (size_t i = 0; i < num_coros; ++i) {
         wg.Add();
-        loop.Submit(new SpawnDeleting{coro() | FMap{[&wg](Unit) {
-                                          wg.Done();
-                                          return Unit{};
-                                      }},
-                                      in<Runtime>});
+        loop.Submit(new Spawn{coro() | ThenDone(wg) | AndThen(SelfDestruct),
+                              in<Runtime>});
     }
     wg.Wait();
 }
