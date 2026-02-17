@@ -23,8 +23,8 @@ catch_discover_tests(proto_coro_real_tests)
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Tsan" AND NOT CMAKE_BUILD_TYPE STREQUAL "Asan")
   set(FTHREADS_LIB "${CMAKE_BINARY_DIR}/_deps/libfthreads.a")
   file(
-    DOWNLOAD https://files.kek.today/libfthreads/0214-987602.a "${FTHREADS_LIB}"
-    EXPECTED_HASH SHA256=98760247f729c527a78a71940c607b7020428fd3f93c112e46cae7abf1b8f34d
+    DOWNLOAD https://files.kek.today/libfthreads/0216-23dc21.a "${FTHREADS_LIB}"
+    EXPECTED_HASH SHA256=23dc21693d1fb96be39d4f8a28f8fd7cf6872fc4824e50f330a6e94980e65748
     TLS_VERIFY ON
   )
 
