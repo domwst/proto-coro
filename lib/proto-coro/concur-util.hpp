@@ -10,15 +10,15 @@ template <class Inner>
 struct Boxed {
     template <class... Args>
     Boxed(Args&&... args)
-        : inner(std::make_unique<Inner>(std::forward<Args>(args)...)) {
+        : inner_(std::make_unique<Inner>(std::forward<Args>(args)...)) {
     }
 
     PROTO_CORO(OutputOf<Inner>) {
-        return inner->Step(CTX_VAR);
+        return inner_->Step(CTX_VAR);
     }
 
   private:
-    std::unique_ptr<Inner> inner;
+    std::unique_ptr<Inner> inner_;
 };
 
 template <class T>

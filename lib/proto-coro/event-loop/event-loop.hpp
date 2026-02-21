@@ -3,9 +3,11 @@
 #include <proto-coro/fast-pimpl.hpp>
 #include <proto-coro/routine.hpp>
 #include <proto-coro/rt.hpp>
+#include <proto-coro/unit.hpp>
 
 struct EventLoop {
     using Task = IRoutine<EventLoop>;
+    using RoutineAux = Unit;
 
     EventLoop(size_t num_workers);
 

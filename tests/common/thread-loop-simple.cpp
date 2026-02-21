@@ -8,6 +8,7 @@
 
 struct TP : ThreadPool<TP> {
     using ThreadPool<TP>::ThreadPool;
+    using RoutineAux = Unit;
 
     void Start() {
         ThreadPool<TP>::Start(this);

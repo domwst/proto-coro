@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ctx.hpp"  // IWYU pragma: export
+#include "unit.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -21,9 +22,6 @@ constexpr State kInitialState = 0;
 struct Pc {
     State pc_state = kInitialState;
 };
-
-// To be used instead of void
-struct Unit {};
 
 #define _CONCAT_IMPL(a, b) a##b
 #define CONCAT(a, b) _CONCAT_IMPL(a, b)

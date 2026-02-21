@@ -3,9 +3,11 @@
 #include <proto-coro/concepts.hpp>
 #include <proto-coro/event-loop/thread-pool.hpp>
 #include <proto-coro/event-loop/timer-thread.hpp>
+#include <proto-coro/unit.hpp>
 
 struct Loop : ThreadPool<Loop>, TimerThread<Loop> {
     using ThreadPool<Loop>::ThreadPool;
+    using RoutineAux = Unit;
 
     void Start() {
         ThreadPool<Loop>::Start(this);
@@ -22,5 +24,5 @@ struct Loop : ThreadPool<Loop>, TimerThread<Loop> {
 };
 
 static_assert(Executor<Loop>);
-static_assert(Timers<Loop>);
+static_assert(TimersManager<Loop>);
 static_assert(!IOManager<Loop>);

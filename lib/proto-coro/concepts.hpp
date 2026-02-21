@@ -11,7 +11,7 @@ concept Executor = requires(Runtime* rt, IRoutine<Runtime>* routine) {
 };
 
 template <class Runtime>
-concept Timers =
+concept TimersManager =
     requires(Runtime* rt, IRoutine<Runtime>* routine, TimePoint tp) {
         { rt->After(tp, routine) } -> std::same_as<void>;
     };
