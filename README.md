@@ -177,13 +177,13 @@ struct Spawn final : IRoutine<Runtime> {
 
 Так как реализация корутины довольно громоздкая, для последовательной композиции
 корутин могут использоваться функциональные комбинаторы `fmap` и `>>=`
-в форме `FMap` и `AndThen`, которые поддерживают pipe-based синтаксис [пример](https://github.com/domwst/proto-coro/blob/72836a97e3f22e58ddbb8e443436f9f65d8401f4/tests/real/test-sleep-yield.cpp#L51).
+в форме `FMap` и `AndThen`, которые поддерживают pipe-based синтаксис [пример](https://github.com/domwst/proto-coro/blob/ab9d6d87314906f8646a4d0b5c2e0b89543970e5/tests/real/test-sleep-yield.cpp#L51).
 
 Для связывания корутин в рантайме с обычным кодом используются блокирующие примитивы
 синхронизации:
 
-- [Event](https://github.com/domwst/proto-coro/blob/860c74958a8a9cef8305a2e727042a46ab23faac/tests/real/test-sleep-yield.cpp#L39)
-- [WaitGroup](https://github.com/domwst/proto-coro/blob/860c74958a8a9cef8305a2e727042a46ab23faac/tests/sim/load-balancing.cpp#L31)
+- [Event](https://github.com/domwst/proto-coro/blob/ab9d6d87314906f8646a4d0b5c2e0b89543970e5/examples/http_server.cpp#L402)
+- [WaitGroup](https://github.com/domwst/proto-coro/blob/ab9d6d87314906f8646a4d0b5c2e0b89543970e5/tests/sim/load-balancing.cpp#L31)
   (используется в основном в тестах)
 
 Возможно, явно упоминаться в задаче они не будут в пользу функции вроде
@@ -195,8 +195,8 @@ decltype(auto) RunBlocking(Coro&& coro, Runtime& rt);
 
 ## Примеры
 
-- [Простой пример](https://github.com/domwst/proto-coro/blob/860c74958a8a9cef8305a2e727042a46ab23faac/examples/proto_coro_demo.cpp#L71)
-- [Простой некорректный HTTP-сервер](https://github.com/domwst/proto-coro/blob/860c74958a8a9cef8305a2e727042a46ab23faac/examples/http_server.cpp)
+- [Простой пример](https://github.com/domwst/proto-coro/blob/ab9d6d87314906f8646a4d0b5c2e0b89543970e5/examples/proto_coro_demo.cpp#L71)
+- [Простой некорректный HTTP-сервер](https://github.com/domwst/proto-coro/blob/ab9d6d87314906f8646a4d0b5c2e0b89543970e5/examples/http_server.cpp)
 
 ## Дополнительные особенности
 
