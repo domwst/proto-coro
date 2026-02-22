@@ -62,6 +62,7 @@ static uint64_t FetchAdd(uint64_t& where, uint64_t val) {
     _FALTER_MOCK(_IMPL_STRUCT_NAME(name), ret, name, __VA_ARGS__)
 
 #define REAL(name) _IMPL_STRUCT_NAME(name)::real_##name
+#define FAULTY(name) _IMPL_STRUCT_NAME(name)::run
 
 static thread_local std::mt19937 rng{424243};
 
@@ -112,18 +113,37 @@ FALTER_MOCK(int, pthread_mutex_unlock, pthread_mutex_t*, mutex) {
 
 static thread_local CountdownFaultStrategy<5> cond_spurious{3};
 
+#define _COND_MUTEX_FAULT(mutex)                                               \
+    do {                                                                       \
+        if (cond_spurious.Fault()) {                                           \
+            if (int ret = REAL(pthread_mutex_unlock)(mutex); ret != 0) {       \
+                return ret;                                                    \
+            }                                                                  \
+            std::this_thread::yield();                                         \
+            REAL(pthread_mutex_lock)(mutex);                                   \
+            return 0;                                                          \
+        }                                                                      \
+    } while (false)
+
 FALTER_MOCK(int, pthread_cond_wait, pthread_cond_t*, cond, pthread_mutex_t*,
             mutex) {
     FetchAdd(GlobalStats().cond_waits, 1);
-    if (cond_spurious.Fault()) {
-        if (int ret = REAL(pthread_mutex_unlock)(mutex); ret != 0) {
-            return ret;
-        }
-        std::this_thread::yield();
-        REAL(pthread_mutex_lock)(mutex);
-        return 0;
-    }
+    _COND_MUTEX_FAULT(mutex);
     return real_pthread_cond_wait(cond, mutex);
+}
+
+FALTER_MOCK(int, pthread_cond_clockwait, pthread_cond_t* __restrict__, cond,
+            pthread_mutex_t* __restrict__, mutex, clockid_t, clock_id,
+            const struct timespec* __restrict__, abstime) {
+    FetchAdd(GlobalStats().cond_timed_waits, 1);
+    _COND_MUTEX_FAULT(mutex);
+    return real_pthread_cond_clockwait(cond, mutex, clock_id, abstime);
+}
+
+FALTER_MOCK(int, pthread_cond_timedwait, pthread_cond_t* __restrict__, cond,
+            pthread_mutex_t* __restrict__, mutex,
+            const struct timespec* __restrict__, abstime) {
+    return FAULTY(pthread_cond_clockwait)(cond, mutex, CLOCK_REALTIME, abstime);
 }
 
 FALTER_MOCK(int, pthread_cond_signal, pthread_cond_t*, cond) {
