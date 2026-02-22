@@ -218,6 +218,58 @@ struct IRoutine : Runtime::RoutineAux {
 
 В частности, `RoutineAux` может быть узлом интрузивной структуры данных.
 
+## Альтернативный интерфейс рантайма
+
+На который я пока не решился.
+
+```cpp
+template <class T>
+concept Coroutine = requires {
+    typename T::Output;
+    // ...
+};
+
+struct DummyCoro : Pc {
+    PROTO_CORO(Unit) {
+        // ...
+    }
+};
+
+template <class Runtime>
+concept Executor = requires(Runtime* rt) {
+    Coroutine<typename Runtime::YieldCoro>;
+    { rt->Yield() } -> std::same_as<typename Runtime::YieldCoro>;
+
+    // TODO: SpawnedCoro<DummyCoro>/SpawnedCoro<typename DummyCoro::Output>?
+    Coroutine<typename Runtime::SpawnedCoro>;
+    { rt->Spawn(DummyCoro{}) } -> std::same_as<typename Runtime::SpawnedCoro>;
+};
+
+template <class Runtime>
+concept TimersManager = requires(Runtime* rt, TimePoint tp) {
+    Coroutine<typename Runtime::SleepUntilCoro>;
+    { rt->SleepUntil(tp) } -> std::same_as<typename Runtime::SleepUntilCoro>;
+};
+
+template <class Runtime>
+concept IOManager = requires(Runtime* rt) {
+    typename Runtime::FileDescriptor;
+    // 50 функций для работы с файловыми дескрипторами
+};
+```
+
+Плюсы альтернативного интерфейса:
+
+- Содержит меньше деталей реализации (рантайм может предоставить произвольную
+    логику ожидания, например, на таймере)
+- `IOManager` совместим с io_uring/ioringapi
+- Позволяет ограничивать доступный вызываемым корутинам io-функционал рантайма
+
+Минусы:
+
+- Более сложная реализация `IOManager`
+- Типы всех корутин становятся зависимыми от типа рантайма
+
 ## Стащено из
 
 - [Protothreads](https://dunkels.com/adam/pt/)
