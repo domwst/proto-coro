@@ -27,5 +27,5 @@ struct EventLoop {
 
   private:
     struct Impl;
-    FastPimpl<Impl, 360, 8> impl_;
+    FastPimpl<Impl, 896, 128> impl_;
 };

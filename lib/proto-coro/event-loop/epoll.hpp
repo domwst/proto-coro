@@ -27,4 +27,8 @@ struct Epoll {
     std::atomic<bool> is_closed_ = false;
     OwnedFd efd_;
     OwnedFd closed_event_fd_;
+
+    // One of the few cases where I don't want compiler to reorder fields
+    // automatically
+    alignas(128) std::atomic<char> sync_{0};
 };
