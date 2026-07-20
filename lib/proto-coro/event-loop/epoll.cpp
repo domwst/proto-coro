@@ -75,7 +75,7 @@ Epoll::Poll(int timeout_ms, std::span<std::pair<uint32_t, void*>> tasks_buf) {
         tasks_buf = tasks_buf.subspan(1);
     }
     if (tasks != 0) {
-        sync_.load(std::memory_order_acquire);
+        std::atomic_signal_fence(std::memory_order_acquire);
     }
     return tasks;
 }
@@ -88,7 +88,7 @@ int Epoll::Change(int fd, uint32_t flags, void* task, int cmd) {
                 .ptr = task,
             },
     };
-    sync_.store(0, std::memory_order_release);
+    std::atomic_signal_fence(std::memory_order_release);
     return epoll_ctl(efd_.AsRawFd(), cmd, fd, &ev);
 }
 
